@@ -51,6 +51,7 @@ export interface Dictionary {
     points: { title: string; description: string }[]
   }
   requestForm: {
+    selectPlaceholder: string
     step1: {
       label: string
       whatLookingFor: { label: string; placeholder: string }

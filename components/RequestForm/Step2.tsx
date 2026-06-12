@@ -16,7 +16,7 @@ interface Step2Props {
 }
 
 export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step2Props) {
-  const { step2 } = dict
+  const { step2, selectPlaceholder } = dict
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,7 +28,7 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
           value={formData.partnerType}
           onChange={(e) => onChange('partnerType', e.target.value)}
         >
-          <option value="" />
+          <option value="">{selectPlaceholder}</option>
           {Object.entries(step2.partnerType.options).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
@@ -63,7 +63,7 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
           value={formData.budget}
           onChange={(e) => onChange('budget', e.target.value)}
         >
-          <option value="" />
+          <option value="">{selectPlaceholder}</option>
           {Object.entries(step2.budget.options).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
@@ -78,7 +78,7 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
           value={formData.timeline}
           onChange={(e) => onChange('timeline', e.target.value)}
         >
-          <option value="" />
+          <option value="">{selectPlaceholder}</option>
           {Object.entries(step2.timeline.options).map(([key, label]) => (
             <option key={key} value={key}>
               {label}
@@ -93,7 +93,7 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
           value={formData.englishSpeaking}
           onChange={(e) => onChange('englishSpeaking', e.target.value)}
         >
-          <option value="" />
+          <option value="">{selectPlaceholder}</option>
           {Object.entries(step2.englishSpeaking.options).map(([key, label]) => (
             <option key={key} value={key}>
               {label}

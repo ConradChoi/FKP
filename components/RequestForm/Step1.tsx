@@ -18,6 +18,8 @@ interface Step1Props {
 export function Step1({ dict, categoriesDict, formData, errors, onChange, onNext }: Step1Props) {
   const { step1 } = dict
 
+  const { selectPlaceholder } = dict
+
   return (
     <div className="flex flex-col gap-5">
       <p className="text-label-button text-primary-600">{step1.label}</p>
@@ -38,7 +40,7 @@ export function Step1({ dict, categoriesDict, formData, errors, onChange, onNext
           value={formData.category}
           onChange={(e) => onChange('category', e.target.value)}
         >
-          <option value="" />
+          <option value="">{selectPlaceholder}</option>
           {Object.entries(categoriesDict.items).map(([key, info]) => (
             <option key={key} value={key}>
               {info.name}

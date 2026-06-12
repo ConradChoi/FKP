@@ -85,6 +85,7 @@ export const ja: Dictionary = {
     ],
   },
   requestForm: {
+    selectPlaceholder: '選択してください',
     step1: {
       label: 'ステップ1/3 — お探しのもの',
       whatLookingFor: {

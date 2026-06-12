@@ -87,6 +87,7 @@ export const en: Dictionary = {
     ],
   },
   requestForm: {
+    selectPlaceholder: 'Select an option',
     step1: {
       label: "Step 1 of 3 — What You're Looking For",
       whatLookingFor: {
