@@ -1,4 +1,5 @@
 // Design Ref: §5.1 Screen Layout — Header / Hero / HowItWorks / Categories / WhyUs / RequestForm / Footer
+import Link from 'next/link'
 import { getDictionary, locales } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/types'
 import { AnalyticsPageView } from '@/components/AnalyticsPageView'
@@ -23,7 +24,9 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
       <AnalyticsPageView path={`/${locale}`} />
 
       <header className="flex items-center justify-between border-b border-neutral-200 px-section-x-mobile py-4 lg:px-section-x">
-        <span className="text-h3 text-primary-900">{dict.header.logo}</span>
+        <Link href={`/${locale}`} className="text-h3 text-primary-900">
+          {dict.header.logo}
+        </Link>
         <LanguageSwitcher currentLocale={locale as Locale} dict={dict.header.languageSwitcher} />
       </header>
 
