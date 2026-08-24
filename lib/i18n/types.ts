@@ -70,6 +70,14 @@ export interface Dictionary {
       label: string
       companyNameWebsite: { label: string; placeholder: string }
       contact: { label: string; placeholder: string }
+      // Bound to docs/legal/privacy-v1.0-{en,ja}.md / terms-v1.0-{en,ja}.md via
+      // lib/legal/consentVersions.ts. before/linkText/after split so each
+      // language can place the link naturally in its own sentence order.
+      consent: {
+        privacy: { before: string; linkText: string; after: string }
+        terms: { before: string; linkText: string; after: string }
+        marketingLabel: string
+      }
     }
     buttons: {
       next: string
@@ -81,6 +89,7 @@ export interface Dictionary {
     validation: {
       required: string
       invalidEmail: string
+      consentRequired: string
     }
     status: {
       success: string
@@ -90,5 +99,17 @@ export interface Dictionary {
   footer: {
     intro: string
     contactEmail: string
+    privacyLinkText: string
+    termsLinkText: string
+  }
+  legal: {
+    backToHome: string
+  }
+  cookieConsent: {
+    before: string
+    linkText: string
+    after: string
+    accept: string
+    decline: string
   }
 }

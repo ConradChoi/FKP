@@ -5,6 +5,7 @@ import { Inter } from 'next/font/google'
 import Script from 'next/script'
 import { getDictionary, locales } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/types'
+import { CookieConsentBanner } from '@/components/CookieConsentBanner'
 import '../globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
@@ -54,10 +55,28 @@ export default async function RootLayout({
   params: Promise<{ locale: string }>
 }) {
   const { locale } = await params
+  const dict = getDictionary(locale as Locale)
 
   return (
     <html lang={locale} className={inter.variable}>
       <body className="font-sans">
+        {/* Design Ref: privacy review §6 S-4 — Google Consent Mode v2 default MUST be
+            set before GTM/gtag load, so GTM/GA4 start in a denied state until the
+            visitor accepts via CookieConsentBanner. beforeInteractive is valid here
+            because this is the root-most layout (no separate app/layout.tsx). */}
+        <Script id="consent-default" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            window.gtag = window.gtag || function(){window.dataLayer.push(arguments);};
+            window.gtag('consent', 'default', {
+              ad_storage: 'denied',
+              analytics_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              wait_for_update: 500
+            });
+          `}
+        </Script>
         <noscript>
           <iframe
             src={`https://www.googletagmanager.com/ns.html?id=${GTM_ID}`}
@@ -67,6 +86,7 @@ export default async function RootLayout({
           />
         </noscript>
         {children}
+        <CookieConsentBanner dict={dict.cookieConsent} locale={locale as Locale} />
         <Script id="gtm-init" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -79,8 +99,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             <Script src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} strategy="afterInteractive" />
             <Script id="ga4-init" strategy="afterInteractive">
               {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
                 gtag('js', new Date());
                 gtag('config', '${GA_ID}', { send_page_view: false });
               `}

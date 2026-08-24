@@ -107,7 +107,7 @@ test('5. 네트워크 오류 처리 — SubmitStatus=error + Retry 노출, Retry
   const retryButton = page.getByRole('button', { name: en.requestForm.buttons.retry, exact: true })
   await expect(retryButton).toBeVisible()
 
-  await page.unroute('**/macros/s/**')
+  await page.unroute('**/api/requests')
   await mockFormEndpoint(page, 'success')
   await retryButton.click()
 

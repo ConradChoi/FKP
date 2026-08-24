@@ -156,6 +156,11 @@ export const en: Dictionary = {
         label: 'Contact information',
         placeholder: 'Your email address',
       },
+      consent: {
+        privacy: { before: 'I agree to the ', linkText: 'Privacy Policy', after: '.' },
+        terms: { before: 'I agree to the ', linkText: 'Terms of Service', after: '.' },
+        marketingLabel: '(Optional) I want to receive occasional updates by email.',
+      },
     },
     buttons: {
       next: 'Next',
@@ -167,6 +172,7 @@ export const en: Dictionary = {
     validation: {
       required: 'This field is required.',
       invalidEmail: 'Please enter a valid email address.',
+      consentRequired: 'Please agree to the Privacy Policy and Terms of Service to continue.',
     },
     status: {
       success: "Thank you! We've received your request and will get back to you soon.",
@@ -176,5 +182,17 @@ export const en: Dictionary = {
   footer: {
     intro: 'Find Korean Partners helps global companies connect with trusted Korean education, IT, content, and service partners.',
     contactEmail: 'jhc@ylia.io',
+    privacyLinkText: 'Privacy Policy',
+    termsLinkText: 'Terms of Service',
+  },
+  legal: {
+    backToHome: '← Back to Find Korean Partners',
+  },
+  cookieConsent: {
+    before: 'We use cookies for analytics to improve this site. See our ',
+    linkText: 'Privacy Policy',
+    after: ' for details.',
+    accept: 'Accept',
+    decline: 'Decline',
   },
 }

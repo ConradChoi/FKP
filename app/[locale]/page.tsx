@@ -37,7 +37,7 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
 
       <RequestForm dict={dict.requestForm} categoriesDict={dict.categories} locale={locale as Locale} />
 
-      <Footer dict={dict.footer} />
+      <Footer dict={dict.footer} locale={locale as Locale} />
     </main>
   )
 }

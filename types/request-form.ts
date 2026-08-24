@@ -14,9 +14,22 @@ export interface RequestFormData {
   contact: string // Step3 - email/contact
 }
 
+// Design Ref: privacy review §4.1/§4.3 — 개인정보 동의와 이용약관 동의는 별도 체크박스로
+// 분리 수집한다(다크패턴 금지). version/locale은 "어느 문안에 동의했는지" 증빙용이며
+// 클라이언트가 임의로 바꿀 수 없도록 서버(app/api/requests/route.ts)가 상수값으로 재검증한다.
+export interface ConsentPayload {
+  privacy: boolean
+  terms: boolean
+  marketing: boolean
+  version: string // consent_version — privacy 문안 버전
+  termsVersion: string // terms_version — 이용약관 문안 버전
+  locale: string // consent_locale — 어느 언어 문안에 동의했는지
+}
+
 export interface RequestFormPayload extends RequestFormData {
   locale: Locale
   honeypot: string // always empty string
+  consent: ConsentPayload
 }
 
 // 작성 중에는 select 필드가 빈 값일 수 있으므로 모든 필드를 string으로 다루고,
@@ -24,5 +37,12 @@ export interface RequestFormPayload extends RequestFormData {
 export type RequestFormState = {
   [K in keyof RequestFormData]: string
 } & { honeypot: string }
+
+// 동의 체크박스는 boolean 상태이므로 RequestFormState(전부 string)와 분리해서 관리한다.
+export type ConsentState = {
+  privacy: boolean
+  terms: boolean
+  marketing: boolean
+}
 
 export type SubmitState = 'idle' | 'loading' | 'success' | 'error'

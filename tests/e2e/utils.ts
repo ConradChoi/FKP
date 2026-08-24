@@ -2,7 +2,9 @@
 import type { Page } from '@playwright/test'
 import type { Dictionary } from '../../lib/i18n/types'
 
-const FORM_ENDPOINT_PATTERN = '**/macros/s/**'
+// Phase 1 (Supabase migration): submission now goes through our own Next.js route
+// handler (app/api/requests/route.ts) instead of the external Apps Script Web App.
+const FORM_ENDPOINT_PATTERN = '**/api/requests'
 
 export interface RequestFormValues {
   whatLookingFor: string
@@ -43,14 +45,18 @@ export const sampleJa: RequestFormValues = {
   contact: 'test@example.com',
 }
 
-// 실제 Apps Script Web App(NEXT_PUBLIC_FORM_ENDPOINT)으로의 요청을 가로채어
-// Sheets 기록/이메일 발송 등 실제 부수효과 없이 success/error 분기를 테스트한다.
+// 실제 /api/requests(Supabase RPC 경유)로의 요청을 가로채어, 실제 DB 부수효과 없이
+// success/error 분기를 테스트한다.
 export async function mockFormEndpoint(page: Page, outcome: 'success' | 'error') {
   await page.route(FORM_ENDPOINT_PATTERN, async (route) => {
     if (outcome === 'error') {
       await route.abort()
     } else {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: '{"success":true}' })
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, id: '00000000-0000-0000-0000-000000000000' }),
+      })
     }
   })
 }
@@ -93,6 +99,13 @@ export async function fillStep3(
 ) {
   await page.getByLabel(dict.step3.companyNameWebsite.label).fill(values.companyNameWebsite)
   await page.getByLabel(dict.step3.contact.label).fill(values.contact)
+  // Privacy/terms consent checkboxes are required to submit (privacy review §4.2).
+  // Marketing consent stays unchecked (optional). Label text is split into
+  // before/linkText/after (see Step3.tsx) so the accessible name is their
+  // concatenation.
+  const { privacy, terms } = dict.step3.consent
+  await page.getByLabel(`${privacy.before}${privacy.linkText}${privacy.after}`).check()
+  await page.getByLabel(`${terms.before}${terms.linkText}${terms.after}`).check()
   if (submit) {
     await page.getByRole('button', { name: dict.buttons.submit, exact: true }).click()
   }

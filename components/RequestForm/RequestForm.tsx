@@ -4,15 +4,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import type { Dictionary, Locale } from '@/lib/i18n/types'
-import type { RequestFormPayload, RequestFormState, SubmitState } from '@/types/request-form'
+import type { ConsentState, RequestFormData, RequestFormPayload, RequestFormState, SubmitState } from '@/types/request-form'
 import { submitRequest } from '@/lib/forms/submitRequest'
 import { trackEvent } from '@/lib/analytics'
+import { PRIVACY_CONSENT_VERSION, TERMS_CONSENT_VERSION } from '@/lib/legal/consentVersions'
+import { EMAIL_REGEX } from '@/lib/forms/emailRegex'
 import { Step1 } from './Step1'
 import { Step2 } from './Step2'
 import { Step3 } from './Step3'
 import { SubmitStatus } from './SubmitStatus'
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const initialFormData: RequestFormState = {
   whatLookingFor: '',
@@ -28,6 +28,12 @@ const initialFormData: RequestFormState = {
   honeypot: '',
 }
 
+const initialConsent: ConsentState = {
+  privacy: false,
+  terms: false,
+  marketing: false,
+}
+
 interface RequestFormProps {
   dict: Dictionary['requestForm']
   categoriesDict: Dictionary['categories']
@@ -37,6 +43,7 @@ interface RequestFormProps {
 export function RequestForm({ dict, categoriesDict, locale }: RequestFormProps) {
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [formData, setFormData] = useState<RequestFormState>(initialFormData)
+  const [consent, setConsent] = useState<ConsentState>(initialConsent)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<SubmitState>('idle')
 
@@ -46,6 +53,16 @@ export function RequestForm({ dict, categoriesDict, locale }: RequestFormProps) 
       if (!(field in prev)) return prev
       const next = { ...prev }
       delete next[field]
+      return next
+    })
+  }
+
+  function handleConsentChange(field: keyof ConsentState, value: boolean) {
+    setConsent((prev) => ({ ...prev, [field]: value }))
+    setErrors((prev) => {
+      if (!('consent' in prev)) return prev
+      const next = { ...prev }
+      delete next.consent
       return next
     })
   }
@@ -76,6 +93,9 @@ export function RequestForm({ dict, categoriesDict, locale }: RequestFormProps) 
     } else if (!EMAIL_REGEX.test(formData.contact.trim())) {
       next.contact = dict.validation.invalidEmail
     }
+    // Design Ref: privacy review §4.2 — 동의 없이는 제출 불가(다크패턴 금지: 기본 미체크,
+    // 미체크 시 명시적 에러). 서버(app/api/requests/route.ts)도 동일 조건을 재검증한다.
+    if (!consent.privacy || !consent.terms) next.consent = dict.validation.consentRequired
     return next
   }
 
@@ -96,7 +116,22 @@ export function RequestForm({ dict, categoriesDict, locale }: RequestFormProps) 
 
   async function submit() {
     setStatus('loading')
-    const payload = { ...formData, locale } as RequestFormPayload
+    const payload: RequestFormPayload = {
+      ...(formData as unknown as RequestFormData),
+      locale,
+      honeypot: formData.honeypot,
+      consent: {
+        privacy: consent.privacy,
+        terms: consent.terms,
+        marketing: consent.marketing,
+        // version/termsVersion/locale are informational on the client; the server
+        // (app/api/requests/route.ts) uses its own constants as the source of truth
+        // and does not trust these values (privacy review §4.3 note 1).
+        version: PRIVACY_CONSENT_VERSION,
+        termsVersion: TERMS_CONSENT_VERSION,
+        locale,
+      },
+    }
     const result = await submitRequest(payload)
     if (result.success) trackEvent('form_submit', { locale })
     setStatus(result.success ? 'success' : 'error')
@@ -139,7 +174,16 @@ export function RequestForm({ dict, categoriesDict, locale }: RequestFormProps) 
               />
             )}
             {step === 3 && (
-              <Step3 dict={dict} formData={formData} errors={errors} onChange={handleChange} onBack={handleBack} />
+              <Step3
+                dict={dict}
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
+                consent={consent}
+                onConsentChange={handleConsentChange}
+                onBack={handleBack}
+                locale={locale}
+              />
             )}
           </form>
         ) : (

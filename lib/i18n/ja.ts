@@ -154,6 +154,11 @@ export const ja: Dictionary = {
         label: '連絡先',
         placeholder: 'メールアドレス',
       },
+      consent: {
+        privacy: { before: '', linkText: 'プライバシーポリシー', after: 'に同意します。' },
+        terms: { before: '', linkText: '利用規約', after: 'に同意します。' },
+        marketingLabel: '（任意）お知らせ・アップデート情報の受信を希望します。',
+      },
     },
     buttons: {
       next: '次へ',
@@ -165,6 +170,7 @@ export const ja: Dictionary = {
     validation: {
       required: 'このフィールドは必須です。',
       invalidEmail: '有効なメールアドレスを入力してください。',
+      consentRequired: '続行するには、プライバシーポリシーと利用規約に同意してください。',
     },
     status: {
       success: 'ありがとうございます。リクエストを受け付けました。担当者よりご連絡いたします。',
@@ -174,5 +180,17 @@ export const ja: Dictionary = {
   footer: {
     intro: 'Find Korean Partnersは、海外企業が信頼できる韓国の教育・IT・コンテンツ・サービスパートナーとつながることをサポートします。',
     contactEmail: 'jhc@ylia.io',
+    privacyLinkText: 'プライバシーポリシー',
+    termsLinkText: '利用規約',
+  },
+  legal: {
+    backToHome: '← Find Korean Partners トップへ戻る',
+  },
+  cookieConsent: {
+    before: '当サイトでは利用状況分析のためにCookieを使用しています。詳細は',
+    linkText: 'プライバシーポリシー',
+    after: 'をご覧ください。',
+    accept: '同意する',
+    decline: '同意しない',
   },
 }
