@@ -28,9 +28,11 @@ export interface Dictionary {
   }
   header: {
     logo: string
+    requestNav: string
     languageSwitcher: {
       en: string
       ja: string
+      switchWarning: string
     }
   }
   hero: {
@@ -45,6 +47,7 @@ export interface Dictionary {
   categories: {
     title: string
     items: Record<Category, CategoryInfo>
+    selectHint: string
   }
   whyUs: {
     title: string
@@ -85,6 +88,7 @@ export interface Dictionary {
       submit: string
       submitting: string
       retry: string
+      startNew: string
     }
     validation: {
       required: string
@@ -95,6 +99,31 @@ export interface Dictionary {
       success: string
       error: string
     }
+    // Design Ref: fkp-v0.2-phase2-request-ui.spec.md §2.3/§3.2 — recap card copy shared by
+    // Hero's Step1 recap and the continuation panel's Step1/Step2 recap.
+    recap: {
+      step1Label: string
+      step2Label: string
+      editLabel: string
+    }
+    // Design Ref: fkp-v0.2-phase2-request-flow.spec.md §13.3/§13.5 — copy for the confirm
+    // modal that appears when Step3's submit button is clicked, before the actual
+    // POST /api/requests call. Field/option labels reuse step1/step2/step3 above and
+    // categoriesDict — only the modal chrome itself needs its own copy.
+    confirmModal: {
+      title: string
+      description: string
+      sections: {
+        step1: string
+        step2: string
+        step3: string
+      }
+      confirmButton: string
+      cancelButton: string
+    }
+  }
+  requestPage: {
+    intro: string
   }
   footer: {
     intro: string

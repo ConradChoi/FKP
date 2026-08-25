@@ -10,5 +10,12 @@ export default async function PrivacyPolicyPage({ params }: { params: Promise<{ 
   const { locale } = await params
   const dict = getDictionary(locale as Locale)
 
-  return <LegalPage locale={locale as Locale} slug="privacy" backToHomeLabel={dict.legal.backToHome} />
+  return (
+    <LegalPage
+      locale={locale as Locale}
+      slug="privacy"
+      headerDict={dict.header}
+      backToHomeLabel={dict.legal.backToHome}
+    />
+  )
 }

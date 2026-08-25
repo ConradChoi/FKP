@@ -1,15 +1,16 @@
-// Design Ref: §5.1 Screen Layout — Header / Hero / HowItWorks / Categories / WhyUs / RequestForm / Footer
-import Link from 'next/link'
+// Design Ref: fkp-v0.2-phase2-request-flow.spec.md §13 (v1.2) — Header / Hero (hosts the full
+// Step1-3 carousel + confirm modal, no separate continuation panel) / HowItWorks / Categories /
+// WhyUs / Footer.
 import { getDictionary, locales } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/types'
 import { AnalyticsPageView } from '@/components/AnalyticsPageView'
-import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { Header } from '@/components/Header'
 import { Hero } from '@/components/Hero'
 import { HowItWorks } from '@/components/HowItWorks'
 import { Categories } from '@/components/Categories'
 import { WhyUs } from '@/components/WhyUs'
-import { RequestForm } from '@/components/RequestForm/RequestForm'
 import { Footer } from '@/components/Footer'
+import { HomeFlowProvider } from '@/components/RequestFlow/HomeFlowProvider'
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }))
@@ -23,21 +24,22 @@ export default async function Page({ params }: { params: Promise<{ locale: strin
     <main>
       <AnalyticsPageView path={`/${locale}`} />
 
-      <header className="flex items-center justify-between border-b border-neutral-200 px-section-x-mobile py-4 lg:px-section-x">
-        <Link href={`/${locale}`} className="text-h3 text-primary-900">
-          {dict.header.logo}
-        </Link>
-        <LanguageSwitcher currentLocale={locale as Locale} dict={dict.header.languageSwitcher} />
-      </header>
+      <HomeFlowProvider dict={dict.requestForm} categoriesDict={dict.categories} locale={locale as Locale}>
+        <Header locale={locale as Locale} dict={dict.header} />
 
-      <Hero dict={dict.hero} />
-      <HowItWorks dict={dict.howItWorks} />
-      <Categories dict={dict.categories} />
-      <WhyUs dict={dict.whyUs} />
+        <Hero
+          dict={dict.hero}
+          requestFormDict={dict.requestForm}
+          categoriesDict={dict.categories}
+          locale={locale as Locale}
+        />
 
-      <RequestForm dict={dict.requestForm} categoriesDict={dict.categories} locale={locale as Locale} />
+        <HowItWorks dict={dict.howItWorks} />
+        <Categories dict={dict.categories} />
+        <WhyUs dict={dict.whyUs} />
 
-      <Footer dict={dict.footer} locale={locale as Locale} />
+        <Footer dict={dict.footer} locale={locale as Locale} />
+      </HomeFlowProvider>
     </main>
   )
 }

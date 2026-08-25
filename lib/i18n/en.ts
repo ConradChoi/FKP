@@ -9,16 +9,18 @@ export const en: Dictionary = {
   },
   header: {
     logo: 'Find Korean Partners',
+    requestNav: 'Request',
     languageSwitcher: {
       en: 'EN',
       ja: 'JA',
+      switchWarning: 'Switching language will clear your in-progress request. Continue?',
     },
   },
   hero: {
     headline: 'Find the right Korean partner for your business.',
     subheadline:
       'Tell us what you are looking for in Korea. We help you discover, compare, and connect with trusted Korean companies, education providers, and service partners.',
-    ctaText: 'Submit Your Request',
+    ctaText: 'Start My Request',
   },
   howItWorks: {
     title: 'How It Works',
@@ -43,6 +45,7 @@ export const en: Dictionary = {
   },
   categories: {
     title: 'Categories',
+    selectHint: 'Start a request in this category',
     items: {
       education: {
         name: 'Education & EdTech',
@@ -168,6 +171,7 @@ export const en: Dictionary = {
       submit: 'Submit Request',
       submitting: 'Submitting...',
       retry: 'Retry',
+      startNew: 'Start a New Request',
     },
     validation: {
       required: 'This field is required.',
@@ -178,6 +182,21 @@ export const en: Dictionary = {
       success: "Thank you! We've received your request and will get back to you soon.",
       error: 'Something went wrong. Please try again.',
     },
+    recap: {
+      step1Label: 'Your request',
+      step2Label: 'Details',
+      editLabel: 'Edit',
+    },
+    confirmModal: {
+      title: 'Please confirm your request',
+      description: "We'll submit the request below. Please review before continuing.",
+      sections: { step1: "What you're looking for", step2: 'Details', step3: 'Contact' },
+      confirmButton: 'Confirm & Submit',
+      cancelButton: 'Cancel',
+    },
+  },
+  requestPage: {
+    intro: "Tell us what you're looking for in Korea, and we'll connect you with the right partner.",
   },
   footer: {
     intro: 'Find Korean Partners helps global companies connect with trusted Korean education, IT, content, and service partners.',

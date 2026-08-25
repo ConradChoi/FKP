@@ -6,6 +6,6 @@ export const primaryButtonClass =
   'rounded-input bg-primary-600 px-6 py-3 text-label-button text-neutral-0 transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300'
 
 export const secondaryButtonClass =
-  'rounded-input border border-neutral-300 px-6 py-3 text-label-button text-neutral-700 transition-colors hover:bg-neutral-100'
+  'rounded-input border border-neutral-300 px-6 py-3 text-label-button text-neutral-700 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50'
 
 export const errorTextClass = 'text-label-caption text-error'

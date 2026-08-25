@@ -10,5 +10,12 @@ export default async function TermsOfServicePage({ params }: { params: Promise<{
   const { locale } = await params
   const dict = getDictionary(locale as Locale)
 
-  return <LegalPage locale={locale as Locale} slug="terms" backToHomeLabel={dict.legal.backToHome} />
+  return (
+    <LegalPage
+      locale={locale as Locale}
+      slug="terms"
+      headerDict={dict.header}
+      backToHomeLabel={dict.legal.backToHome}
+    />
+  )
 }

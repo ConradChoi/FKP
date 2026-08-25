@@ -7,8 +7,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://findkoreanpartners
 export const dynamic = 'force-static'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return locales.map((locale) => ({
-    url: `${SITE_URL}/${locale}`,
-    lastModified: new Date(),
-  }))
+  return locales.flatMap((locale) => [
+    { url: `${SITE_URL}/${locale}`, lastModified: new Date() },
+    // Phase 2 (fkp-v0.2-phase2-request-flow.spec.md §3) — dedicated outreach URL.
+    { url: `${SITE_URL}/${locale}/request`, lastModified: new Date() },
+  ])
 }

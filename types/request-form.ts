@@ -26,9 +26,16 @@ export interface ConsentPayload {
   locale: string // consent_locale — 어느 언어 문안에 동의했는지
 }
 
+// Design Ref: fkp-v0.2-phase2-request-flow.spec.md §6 "payload source 필드 추가 권고" —
+// which entry point the submission originated from. Stored as `requests.source` (Supabase
+// column already accepts any text <=50 chars with default 'web', see
+// supabase/migrations/20260824120000_phase1_requests_pipeline.sql §8 submit_request RPC).
+export type RequestSource = 'home_hero' | 'request_page'
+
 export interface RequestFormPayload extends RequestFormData {
   locale: Locale
   honeypot: string // always empty string
+  source: RequestSource
   consent: ConsentPayload
 }
 

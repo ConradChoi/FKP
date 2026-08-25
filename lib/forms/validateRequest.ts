@@ -12,6 +12,11 @@ const BUDGET_VALUES = ['under-500', '500-1500', '1500-3000', 'over-3000', 'not-s
 const TIMELINE_VALUES = ['asap', 'within-1-month', '1-3-months', '3-6-months', 'flexible'] as const
 const ENGLISH_SPEAKING_VALUES = ['required', 'preferred', 'not-needed'] as const
 const LOCALE_VALUES = ['en', 'ja'] as const // Phase 4 will widen this set (ko/zh)
+// Design Ref: fkp-v0.2-phase2-request-flow.spec.md §6 "payload source 필드 추가 권고" —
+// optional, non-blocking: unknown/missing values fall back to 'web' (the Supabase column's
+// own default) rather than rejecting the submission, so older clients/tests that don't send
+// it keep working.
+const SOURCE_VALUES = ['home_hero', 'request_page'] as const
 
 const MAX_LENGTHS = {
   whatLookingFor: 300,
@@ -36,6 +41,7 @@ export interface RawRequestBody {
   contact?: unknown
   locale?: unknown
   honeypot?: unknown
+  source?: unknown
   consent?: {
     privacy?: unknown
     terms?: unknown
@@ -58,6 +64,7 @@ export interface ValidatedRequest {
   companyNameWebsite: string
   contact: string
   locale: string
+  source: string
   consent: {
     privacy: boolean
     terms: boolean
@@ -146,6 +153,10 @@ export function validateRequestBody(body: RawRequestBody): ValidationResult {
     : null
   if (!locale) errors.locale = 'invalid_enum'
 
+  const source = isNonEmptyString(body.source) && SOURCE_VALUES.includes(body.source as never)
+    ? (body.source as string)
+    : 'web'
+
   const consentInput = body.consent ?? {}
   const consentPrivacy = consentInput.privacy === true
   const consentTerms = consentInput.terms === true
@@ -182,6 +193,7 @@ export function validateRequestBody(body: RawRequestBody): ValidationResult {
       companyNameWebsite: companyNameWebsite as string,
       contact: contact as string,
       locale: locale as string,
+      source,
       consent: {
         privacy: consentPrivacy,
         terms: consentTerms,

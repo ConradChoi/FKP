@@ -9,16 +9,18 @@ export const ja: Dictionary = {
   },
   header: {
     logo: 'Find Korean Partners',
+    requestNav: 'リクエスト',
     languageSwitcher: {
       en: 'EN',
       ja: 'JA',
+      switchWarning: '言語を切り替えると、入力中のリクエスト内容が消去されます。続けますか？',
     },
   },
   hero: {
     headline: '貴社に最適な韓国のパートナーを見つけます。',
     subheadline:
       '韓国で探しているものをお知らせください。信頼できる韓国の企業、教育機関、サービスパートナーを比較・発見し、つながるお手伝いをします。',
-    ctaText: 'リクエストを送信する',
+    ctaText: 'リクエストを始める',
   },
   howItWorks: {
     title: 'ご利用の流れ',
@@ -43,6 +45,7 @@ export const ja: Dictionary = {
   },
   categories: {
     title: '対応カテゴリー',
+    selectHint: 'このカテゴリーでリクエストを開始します',
     items: {
       education: {
         name: '教育・EdTech',
@@ -166,6 +169,7 @@ export const ja: Dictionary = {
       submit: 'リクエストを送信',
       submitting: '送信中...',
       retry: '再試行',
+      startNew: '新しいリクエストを始める',
     },
     validation: {
       required: 'このフィールドは必須です。',
@@ -176,6 +180,21 @@ export const ja: Dictionary = {
       success: 'ありがとうございます。リクエストを受け付けました。担当者よりご連絡いたします。',
       error: 'エラーが発生しました。もう一度お試しください。',
     },
+    recap: {
+      step1Label: '入力内容',
+      step2Label: '詳細',
+      editLabel: '編集',
+    },
+    confirmModal: {
+      title: '内容をご確認ください',
+      description: '以下の内容でリクエストを送信します。送信前にご確認ください。',
+      sections: { step1: 'ご希望内容', step2: '詳細', step3: '連絡先' },
+      confirmButton: '確認して送信',
+      cancelButton: 'キャンセル',
+    },
+  },
+  requestPage: {
+    intro: '韓国で探しているものをお知らせください。最適なパートナーとのマッチングをサポートします。',
   },
   footer: {
     intro: 'Find Korean Partnersは、海外企業が信頼できる韓国の教育・IT・コンテンツ・サービスパートナーとつながることをサポートします。',

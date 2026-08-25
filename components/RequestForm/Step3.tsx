@@ -15,10 +15,16 @@ interface Step3Props {
   consent: ConsentState
   onConsentChange: (field: keyof ConsentState, value: boolean) => void
   onBack: () => void
+  /** Design Ref: Phase 2 — the continuation panel can render Step1/Step2 [Edit] forms
+   * alongside the active Step3 form (ui spec §3.4), so Step3's submit can no longer rely on
+   * a single wrapping <form>'s native submit (a submit-type button anywhere in that form
+   * would fire on Enter from any nested text field, including ones outside Step3). Calling
+   * onSubmit directly on click keeps behavior identical to before while avoiding that risk. */
+  onSubmit: () => void
   locale: Locale
 }
 
-export function Step3({ dict, formData, errors, onChange, consent, onConsentChange, onBack, locale }: Step3Props) {
+export function Step3({ dict, formData, errors, onChange, consent, onConsentChange, onBack, onSubmit, locale }: Step3Props) {
   const { step3 } = dict
 
   return (
@@ -117,7 +123,7 @@ export function Step3({ dict, formData, errors, onChange, consent, onConsentChan
         <button type="button" onClick={onBack} className={secondaryButtonClass}>
           {dict.buttons.back}
         </button>
-        <button type="submit" className={primaryButtonClass}>
+        <button type="button" onClick={onSubmit} className={primaryButtonClass}>
           {dict.buttons.submit}
         </button>
       </div>

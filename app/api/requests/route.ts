@@ -19,6 +19,9 @@
 //     contact: string,               // email
 //     locale: 'en' | 'ja',
 //     honeypot: string,               // must be empty; non-empty => treated as bot
+//     source?: 'home_hero' | 'request_page',  // Phase 2 (fkp-v0.2-phase2-request-flow.spec.md
+//                                              // §6); optional — unknown/missing falls back
+//                                              // to 'web' rather than rejecting the request.
 //     consent: {
 //       privacy: boolean,             // must be true or the request is rejected
 //       terms: boolean,               // must be true or the request is rejected
@@ -209,7 +212,7 @@ export async function POST(request: NextRequest) {
         p_terms_version: termsVersion,
         p_marketing_consent: data.consent.marketing,
         p_consent_ip: maskedConsentIp,
-        p_source: 'web',
+        p_source: data.source,
       })
       .single()
 
