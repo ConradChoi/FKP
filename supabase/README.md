@@ -4,12 +4,18 @@ This directory contains the SQL migrations for the Supabase-backed lead
 pipeline (PRD `docs/01-plan/features/fkp-v0.2-platform-foundation.prd.md`
 §4.1 Epic 1, Phase 1).
 
-## Migrations were NOT applied by backend-developer
+## Migration status
 
-No DB password or `service_role` key was available in this environment, so
-the SQL in `migrations/` has been written and reviewed but **not executed
-against the live project**. The representative (or whoever holds Supabase
-project access) needs to apply it.
+`20260824120000_phase1_requests_pipeline.sql` was applied to the live
+project by the representative on 2026-08-24 via the Supabase Dashboard SQL
+Editor, and re-verified live by qa-reviewer (RLS deny-by-default, insert-only
+RPC, consent checks — see the Phase 1 QA report). No DB password or
+`service_role` key was available in this environment, so backend-developer
+could not run it directly — this note previously said "NOT applied"; that
+was true only until the representative ran it.
+
+Any **new** migration file added after this one still needs to be applied
+the same way (this repo has no CI/CD pipeline wired to Supabase yet).
 
 ## How to apply
 

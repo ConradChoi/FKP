@@ -8,14 +8,17 @@
 --   - docs/01-plan/features/fkp-v0.2-privacy-review-oq4-tv4.md
 --     §2 (retention/erasure), §4 (consent columns), §5 (RLS principles R-1..R-12)
 --
--- HOW TO APPLY (this migration was NOT run by backend-developer — no DB password
--- or service_role key is available in this environment):
+-- STATUS: Applied to the live project by the representative on 2026-08-24 via
+-- the Supabase Dashboard SQL Editor, and re-verified live by qa-reviewer (RLS
+-- deny-by-default, insert-only RPC, consent checks). backend-developer could
+-- not run it directly (no DB password/service_role key in this environment),
+-- hence the how-to-apply notes below — kept for reference and for any future
+-- migration files that still need manual application.
 --
 --   Option A — Supabase Dashboard SQL Editor
 --     1. Open https://supabase.com/dashboard/project/<project-ref>/sql/new
 --     2. Paste the full contents of this file and click "Run".
---     3. Re-run is idempotent-ish (uses IF NOT EXISTS / CREATE OR REPLACE) but
---        was only tested by review, not executed — read through before running.
+--     3. Re-run is idempotent-ish (uses IF NOT EXISTS / CREATE OR REPLACE).
 --
 --   Option B — Supabase CLI
 --     1. `supabase link --project-ref <project-ref>`
