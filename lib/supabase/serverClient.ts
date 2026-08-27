@@ -16,7 +16,16 @@ let cachedClient: SupabaseClient | null = null
 
 export function getSupabaseServerClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY
+  // TEMPORARY (2026-08-27): AWS Amplify's SSR compute runtime was not delivering
+  // non-NEXT_PUBLIC_ env vars to running Lambdas even though the Amplify console showed
+  // them correctly configured (confirmed via a boolean-only diagnostic endpoint) — a
+  // platform-level issue, not a code or console-config mistake. NEXT_PUBLIC_SUPABASE_ANON_KEY
+  // is read first as a workaround (Next.js inlines NEXT_PUBLIC_ vars at build time, so they
+  // work regardless of the runtime propagation bug); SUPABASE_ANON_KEY is kept as a fallback
+  // for local dev (.env.local) and until the Amplify-side issue is root-caused. The anon key
+  // is safe to expose to the browser by Supabase's own design — this only reverses this
+  // project's own defense-in-depth choice (privacy review S-9), not a real secret leak.
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
 
   if (!url || !key) {
     return null

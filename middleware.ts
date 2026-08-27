@@ -16,7 +16,9 @@ async function guardAdmin(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request })
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY
+  // TEMPORARY (2026-08-27) — see lib/supabase/serverClient.ts for why this reads
+  // NEXT_PUBLIC_SUPABASE_ANON_KEY first (AWS Amplify SSR runtime env var propagation bug).
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
   const pathname = request.nextUrl.pathname
   const isPublicAdminPath = ADMIN_PUBLIC_PATHS.has(pathname)
 

@@ -9,7 +9,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function getSupabaseAuthServerClient(): Promise<SupabaseClient | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_ANON_KEY
+  // TEMPORARY (2026-08-27) — see lib/supabase/serverClient.ts for why this reads
+  // NEXT_PUBLIC_SUPABASE_ANON_KEY first (AWS Amplify SSR runtime env var propagation bug).
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
 
   if (!url || !key) {
     return null
