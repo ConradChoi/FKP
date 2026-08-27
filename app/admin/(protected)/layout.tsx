@@ -5,11 +5,12 @@
 // independently, so a stale or manipulated client can't grant access the DB wouldn't.
 import { redirect } from 'next/navigation'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
+import { buildMenuTree } from '@/lib/admin/menuTree'
 import { AdminSidebar } from './AdminSidebar'
 import { SignOutButton } from './SignOutButton'
 import { NotificationBell } from './NotificationBell'
 
-export interface MenuNode {
+export interface MenuRow {
   id: string
   code: string
   parent_id: string | null
@@ -18,21 +19,9 @@ export interface MenuNode {
   icon: string | null
   menu_type: string
   sort_order: number
-  children: MenuNode[]
 }
 
-function buildTree(rows: Omit<MenuNode, 'children'>[]): MenuNode[] {
-  const byId = new Map<string, MenuNode>(rows.map((r) => [r.id, { ...r, children: [] }]))
-  const roots: MenuNode[] = []
-  for (const node of byId.values()) {
-    if (node.parent_id && byId.has(node.parent_id)) {
-      byId.get(node.parent_id)!.children.push(node)
-    } else {
-      roots.push(node)
-    }
-  }
-  return roots
-}
+export type MenuNode = MenuRow & { children: MenuNode[] }
 
 export default async function AdminProtectedLayout({ children }: { children: React.ReactNode }) {
   const supabase = await getSupabaseAuthServerClient()
@@ -42,7 +31,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
   if (!context?.is_active_admin) redirect('/admin/login')
 
   const { data: menuRows } = await supabase.rpc('my_menu_tree')
-  const menuTree = buildTree(menuRows ?? [])
+  const menuTree: MenuNode[] = buildMenuTree(menuRows ?? [])
 
   const { count: pendingAccessRequests } = await supabase
     .from('admin_access_request')

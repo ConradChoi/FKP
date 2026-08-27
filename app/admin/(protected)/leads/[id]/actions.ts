@@ -4,14 +4,20 @@ import { revalidatePath } from 'next/cache'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
 import type { ActionResult } from '@/lib/supabase/adminAuthActions'
 
+// Design Ref: supabase/migrations/20260825160000 — these two used to do a plain table
+// .update() followed by a separate supabase.rpc('log_audit', ...) call. There is no
+// public.log_audit (only private.log_audit, unreachable via PostgREST RPC), so that audit
+// call was silently failing on every status/assignee change. Fixed by routing through
+// SECURITY DEFINER functions that make the update + audit insert atomic, matching the
+// get_request_contact / set_request_internal_note pattern.
+
 export async function updateLeadStatusAction(requestId: string, status: string): Promise<ActionResult> {
   const supabase = await getSupabaseAuthServerClient()
   if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
 
-  const { error } = await supabase.from('requests').update({ status }).eq('id', requestId)
+  const { error } = await supabase.rpc('update_lead_status', { p_request_id: requestId, p_status: status })
   if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
 
-  await supabase.rpc('log_audit', { p_action: 'lead.status_change', p_target_table: 'requests', p_target_id: requestId })
   revalidatePath(`/admin/leads/${requestId}`)
   revalidatePath('/admin/leads')
   return { success: true }
@@ -21,10 +27,9 @@ export async function updateLeadAssigneeAction(requestId: string, assigneeId: st
   const supabase = await getSupabaseAuthServerClient()
   if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
 
-  const { error } = await supabase.from('requests').update({ assignee_id: assigneeId }).eq('id', requestId)
+  const { error } = await supabase.rpc('update_lead_assignee', { p_request_id: requestId, p_assignee_id: assigneeId })
   if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
 
-  await supabase.rpc('log_audit', { p_action: 'lead.assign', p_target_table: 'requests', p_target_id: requestId })
   revalidatePath(`/admin/leads/${requestId}`)
   revalidatePath('/admin/leads')
   return { success: true }
