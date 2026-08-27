@@ -70,3 +70,16 @@ export async function deleteMenuAction(id: string): Promise<ActionResult> {
   revalidatePath('/admin/permissions/menus')
   return { success: true }
 }
+
+// Design Ref: 20260827150000 move_menu — 형제 메뉴와 sort_order를 원자적으로 맞바꾼다.
+// 대표 피드백: 숫자를 직접 계산해 입력하는 방식이 불편해 위/아래 버튼으로 교체.
+export async function moveMenuAction(id: string, direction: 'up' | 'down'): Promise<ActionResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  const { error } = await supabase.rpc('move_menu', { p_id: id, p_direction: direction })
+  if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
+
+  revalidatePath('/admin/permissions/menus')
+  return { success: true }
+}

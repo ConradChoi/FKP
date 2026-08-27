@@ -22,6 +22,15 @@ export function buildMenuTree<T extends { id: string; parent_id: string | null }
   return roots
 }
 
-export function flattenMenuTree<T>(nodes: (T & MenuTreeNode<T>)[], depth = 0): { node: T; depth: number }[] {
-  return nodes.flatMap((n) => [{ node: n, depth }, ...flattenMenuTree(n.children as (T & MenuTreeNode<T>)[], depth + 1)])
+export function flattenMenuTree<T>(
+  nodes: (T & MenuTreeNode<T>)[],
+  depth = 0,
+): { node: T; depth: number; isFirst: boolean; isLast: boolean }[] {
+  // isFirst/isLast are computed among `nodes` itself (the siblings at this recursion
+  // level — either all roots, or one parent's children), which is exactly the scope
+  // move_menu (20260827150000) swaps sort_order within.
+  return nodes.flatMap((n, i) => [
+    { node: n, depth, isFirst: i === 0, isLast: i === nodes.length - 1 },
+    ...flattenMenuTree(n.children as (T & MenuTreeNode<T>)[], depth + 1),
+  ])
 }

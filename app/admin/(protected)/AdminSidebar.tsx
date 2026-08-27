@@ -12,9 +12,7 @@ function NavItem({ node, depth }: { node: MenuNode; depth: number }) {
   if (isGroup) {
     return (
       <div className="mt-4 first:mt-0">
-        <p className="px-3 text-label-caption font-semibold uppercase tracking-wide text-neutral-400">
-          {node.display_name}
-        </p>
+        <p className="px-3 text-body-sm font-semibold text-neutral-500">{node.display_name}</p>
         {node.children.length > 0 && (
           <div className="mt-1 flex flex-col gap-0.5">
             {node.children.map((child) => (

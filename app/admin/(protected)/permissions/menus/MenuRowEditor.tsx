@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateMenuAction, deleteMenuAction } from './actions'
+import { updateMenuAction, deleteMenuAction, moveMenuAction } from './actions'
 import type { MenuRecord } from './page'
 import { errorTextClass } from '@/components/RequestForm/styles'
 
@@ -13,24 +13,49 @@ import { errorTextClass } from '@/components/RequestForm/styles'
 const cellInputClass =
   'w-full rounded-input border border-transparent bg-transparent px-2 py-1 text-body-sm text-neutral-900 hover:border-neutral-200 focus:border-primary-500 focus:bg-neutral-0 focus:outline-none focus:ring-1 focus:ring-primary-500'
 
-export function MenuRowEditor({ menu, depth }: { menu: MenuRecord; depth: number }) {
+export function MenuRowEditor({
+  menu,
+  depth,
+  isFirst,
+  isLast,
+}: {
+  menu: MenuRecord
+  depth: number
+  isFirst: boolean
+  isLast: boolean
+}) {
   const router = useRouter()
   const [displayName, setDisplayName] = useState(menu.display_name)
   const [path, setPath] = useState(menu.path ?? '')
-  const [sortOrder, setSortOrder] = useState(menu.sort_order)
   const [isActive, setIsActive] = useState(menu.is_active)
   const [saving, setSaving] = useState(false)
+  const [moving, setMoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const dirty = displayName !== menu.display_name || path !== (menu.path ?? '') || sortOrder !== menu.sort_order || isActive !== menu.is_active
+  const dirty = displayName !== menu.display_name || path !== (menu.path ?? '') || isActive !== menu.is_active
 
   async function save() {
     setSaving(true)
     setError(null)
-    const result = await updateMenuAction({ id: menu.id, displayName, path: path || null, sortOrder, isActive })
+    const result = await updateMenuAction({ id: menu.id, displayName, path: path || null, sortOrder: menu.sort_order, isActive })
     setSaving(false)
     if (!result.success) {
       setError('저장 실패')
+      return
+    }
+    router.refresh()
+  }
+
+  // Design Ref: 대표 피드백(2026-08-27) — sort_order 숫자를 직접 계산해 입력하는 방식이
+  // 불편하다는 지적에 따라 위/아래 버튼으로 형제 메뉴와 순서를 맞바꾼다(20260827150000
+  // move_menu). isFirst/isLast는 같은 부모를 둔 형제 범위에서 계산된다(lib/admin/menuTree).
+  async function move(direction: 'up' | 'down') {
+    setMoving(true)
+    setError(null)
+    const result = await moveMenuAction(menu.id, direction)
+    setMoving(false)
+    if (!result.success) {
+      setError('순서 변경 실패')
       return
     }
     router.refresh()
@@ -48,12 +73,12 @@ export function MenuRowEditor({ menu, depth }: { menu: MenuRecord; depth: number
 
   return (
     <tr className="border-b border-neutral-100 last:border-0">
-      <td className="px-2 py-2" style={{ paddingLeft: `${16 + depth * 20}px` }}>
+      <td className="px-4 py-2" style={{ paddingLeft: `${16 + depth * 20}px` }}>
         <input className={cellInputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         {menu.menu_type === 'group' && <span className="ml-1 text-label-caption text-neutral-400">(그룹)</span>}
       </td>
       <td className="px-4 py-2 font-mono text-label-caption text-neutral-500">{menu.code}</td>
-      <td className="px-2 py-2">
+      <td className="px-4 py-2">
         <input
           className={cellInputClass}
           value={path}
@@ -61,13 +86,27 @@ export function MenuRowEditor({ menu, depth }: { menu: MenuRecord; depth: number
           onChange={(e) => setPath(e.target.value)}
         />
       </td>
-      <td className="px-2 py-2">
-        <input
-          type="number"
-          className={`${cellInputClass} w-16 text-center`}
-          value={sortOrder}
-          onChange={(e) => setSortOrder(Number(e.target.value))}
-        />
+      <td className="px-4 py-2">
+        <div className="flex items-center justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => move('up')}
+            disabled={isFirst || moving}
+            aria-label="위로 이동"
+            className="rounded-input px-1.5 py-0.5 text-neutral-500 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▲
+          </button>
+          <button
+            type="button"
+            onClick={() => move('down')}
+            disabled={isLast || moving}
+            aria-label="아래로 이동"
+            className="rounded-input px-1.5 py-0.5 text-neutral-500 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            ▼
+          </button>
+        </div>
       </td>
       <td className="px-4 py-2 text-center">
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />

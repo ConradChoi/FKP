@@ -58,8 +58,8 @@ export default async function MenusPage() {
             </tr>
           </thead>
           <tbody>
-            {flat.map(({ node, depth }) => (
-              <MenuRowEditor key={node.id} menu={node} depth={depth} />
+            {flat.map(({ node, depth, isFirst, isLast }) => (
+              <MenuRowEditor key={node.id} menu={node} depth={depth} isFirst={isFirst} isLast={isLast} />
             ))}
           </tbody>
         </table>
