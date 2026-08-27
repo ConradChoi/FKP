@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import type { Dictionary, Locale } from '@/lib/i18n/types'
 import { LanguageSwitcher } from './LanguageSwitcher'
+import { MobileLanguageSwitcher } from './MobileLanguageSwitcher'
 import { useRequestFlowStatus } from './RequestFlow/RequestFlowStatusContext'
 import { focusFirstFieldWithin, smoothScrollToId } from '@/lib/dom/scrollTo'
 
@@ -45,7 +46,8 @@ export function Header({ locale, dict }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-neutral-200 bg-neutral-0 px-section-x-mobile py-4 lg:px-section-x">
       <Link href={`/${locale}`} className="text-body font-semibold text-primary-900 sm:text-h3">
-        {dict.logo}
+        <span className="sm:hidden">{dict.logoShort}</span>
+        <span className="hidden sm:inline">{dict.logo}</span>
       </Link>
       <div className="flex items-center gap-3 sm:gap-6">
         {isRequestPage ? (
@@ -61,7 +63,12 @@ export function Header({ locale, dict }: HeaderProps) {
             {dict.requestNav}
           </button>
         )}
-        <LanguageSwitcher currentLocale={locale} dict={dict.languageSwitcher} />
+        <div className="hidden sm:block">
+          <LanguageSwitcher currentLocale={locale} dict={dict.languageSwitcher} />
+        </div>
+        <div className="sm:hidden">
+          <MobileLanguageSwitcher currentLocale={locale} dict={dict.languageSwitcher} />
+        </div>
       </div>
     </header>
   )

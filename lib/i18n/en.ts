@@ -9,6 +9,7 @@ export const en: Dictionary = {
   },
   header: {
     logo: 'Find Korean Partners',
+    logoShort: 'FKP',
     requestNav: 'Request',
     languageSwitcher: {
       en: 'EN',

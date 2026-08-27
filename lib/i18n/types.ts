@@ -28,6 +28,7 @@ export interface Dictionary {
   }
   header: {
     logo: string
+    logoShort: string
     requestNav: string
     languageSwitcher: {
       en: string
