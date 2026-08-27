@@ -196,11 +196,32 @@ export const ja: Dictionary = {
   requestPage: {
     intro: '韓国で探しているものをお知らせください。最適なパートナーとのマッチングをサポートします。',
   },
+  blog: {
+    pageTitle: 'ブログ',
+    emptyState: 'まだ投稿がありません。近日公開予定です。',
+    backToList: '← ブログ一覧に戻る',
+    ctaTitle: '韓国のパートナーをお探しですか？',
+    ctaButton: 'リクエストを始める',
+  },
+  caseStudies: {
+    pageTitle: '導入事例',
+    emptyState: 'まだ事例がありません。近日公開予定です。',
+    backToList: '← 事例一覧に戻る',
+    ctaTitle: '韓国のパートナーをお探しですか？',
+    ctaButton: 'リクエストを始める',
+  },
+  faq: {
+    pageTitle: 'よくある質問',
+    emptyState: 'まだ質問がありません。近日公開予定です。',
+  },
   footer: {
     intro: 'Find Korean Partnersは、海外企業が信頼できる韓国の教育・IT・コンテンツ・サービスパートナーとつながることをサポートします。',
     contactEmail: 'jhc@ylia.io',
     privacyLinkText: 'プライバシーポリシー',
     termsLinkText: '利用規約',
+    blogLinkText: 'ブログ',
+    caseStudiesLinkText: '導入事例',
+    faqLinkText: 'よくある質問',
   },
   legal: {
     backToHome: '← Find Korean Partners トップへ戻る',

@@ -125,11 +125,34 @@ export interface Dictionary {
   requestPage: {
     intro: string
   }
+  // Design Ref: fkp-v0.2-phase5d-blog-case-faq.spec.md §7 — blog/case_study 공용 카피
+  // 구조(동일 템플릿이라 동일 키셋을 쓴다). ctaTitle/ctaButton은 상세 페이지 하단 CTA용.
+  blog: {
+    pageTitle: string
+    emptyState: string
+    backToList: string
+    ctaTitle: string
+    ctaButton: string
+  }
+  caseStudies: {
+    pageTitle: string
+    emptyState: string
+    backToList: string
+    ctaTitle: string
+    ctaButton: string
+  }
+  faq: {
+    pageTitle: string
+    emptyState: string
+  }
   footer: {
     intro: string
     contactEmail: string
     privacyLinkText: string
     termsLinkText: string
+    blogLinkText: string
+    caseStudiesLinkText: string
+    faqLinkText: string
   }
   legal: {
     backToHome: string

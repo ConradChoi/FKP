@@ -9,6 +9,15 @@ export function Footer({ dict, locale }: { dict: Dictionary['footer']; locale: L
         <p className="text-body text-neutral-600">{dict.intro}</p>
         <p className="mt-2 text-body-sm text-neutral-500">{dict.contactEmail}</p>
         <div className="mt-3 flex gap-4 text-body-sm text-neutral-500">
+          <Link href={`/${locale}/blog`} className="underline hover:text-primary-600">
+            {dict.blogLinkText}
+          </Link>
+          <Link href={`/${locale}/case-studies`} className="underline hover:text-primary-600">
+            {dict.caseStudiesLinkText}
+          </Link>
+          <Link href={`/${locale}/faq`} className="underline hover:text-primary-600">
+            {dict.faqLinkText}
+          </Link>
           <Link href={`/${locale}/privacy`} className="underline hover:text-primary-600">
             {dict.privacyLinkText}
           </Link>

@@ -198,11 +198,32 @@ export const en: Dictionary = {
   requestPage: {
     intro: "Tell us what you're looking for in Korea, and we'll connect you with the right partner.",
   },
+  blog: {
+    pageTitle: 'Blog',
+    emptyState: 'No posts yet. Check back soon.',
+    backToList: '← Back to Blog',
+    ctaTitle: 'Looking for a Korean partner?',
+    ctaButton: 'Start My Request',
+  },
+  caseStudies: {
+    pageTitle: 'Case Studies',
+    emptyState: 'No case studies yet. Check back soon.',
+    backToList: '← Back to Case Studies',
+    ctaTitle: 'Looking for a Korean partner?',
+    ctaButton: 'Start My Request',
+  },
+  faq: {
+    pageTitle: 'FAQ',
+    emptyState: 'No questions yet. Check back soon.',
+  },
   footer: {
     intro: 'Find Korean Partners helps global companies connect with trusted Korean education, IT, content, and service partners.',
     contactEmail: 'jhc@ylia.io',
     privacyLinkText: 'Privacy Policy',
     termsLinkText: 'Terms of Service',
+    blogLinkText: 'Blog',
+    caseStudiesLinkText: 'Case Studies',
+    faqLinkText: 'FAQ',
   },
   legal: {
     backToHome: '← Back to Find Korean Partners',
