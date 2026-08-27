@@ -5,6 +5,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { inputClass } from './styles'
 
 export interface SelectOption {
@@ -24,6 +25,7 @@ interface CustomSelectProps {
 export function CustomSelect({ value, onChange, placeholder, options, onFocus, className = '' }: CustomSelectProps) {
   const [open, setOpen] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [position, setPosition] = useState<{ top: number; left: number; width: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -38,39 +40,37 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
 
   const selected = options.find((o) => o.value === value)
 
+  // Design Ref: 대표 피드백(2026-08-27, 3차) — 실제 원인은 스크롤 위치가 아니라 Hero 카루셀의
+  // 애니메이션 트랙(overflow-hidden + 고정 height, Hero.tsx)이 활성 패널의 원래 높이만큼만
+  // 확보돼 있다는 것이었다. 드롭다운이 열려 패널 내용이 일시적으로 그 높이를 넘으면, 트랙이
+  // 그 초과분을 그대로 잘라버린다(getBoundingClientRect()는 이 잘림과 무관하게 "잘리지 않았다면
+  // 있었을" 원래 크기를 보고하므로, window 스크롤 보정만으로는 근본적으로 해결이 안 됐다).
+  // 목록을 document.body로 포탈 렌더링해 그 조상 자체에서 벗어나면, 어떤 부모의 overflow/height
+  // 제약과도 무관해진다 — 팝오버/드롭다운에 포탈을 쓰는 표준적인 이유와 동일하다.
   useEffect(() => {
     if (!open) return
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      const target = e.target as Node
+      if (containerRef.current?.contains(target)) return
+      if (listRef.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  // Design Ref: 대표 피드백(2026-08-27) — 드롭다운이 화면 하단으로 넘어가면 자동 스크롤 없이는
-  // 잘려 보인다는 지적(모바일 스크린샷). 열릴 때 목록 전체가 뷰포트 안에 들어오도록 스크롤한다.
-  //
-  // BUG FIX (같은 날, 후속 리포트): el.scrollIntoView()는 "가장 가까운 스크롤 가능한 조상"을
-  // 브라우저가 알아서 고르는데, Hero 카루셀 트랙처럼 overflow-hidden + 고정 height를 가진
-  // 컨테이너도 (스크롤바가 안 보여도) scrollHeight > clientHeight라서 "스크롤 가능"으로 취급된다.
-  // 그 결과 Hero 안에서 카테고리 드롭다운을 열면 트랙 내부가 프로그램적으로 스크롤되어, 위에 있는
-  // "What are you looking for" textarea가 그 안에서 밀려 올라가 안 보이는 회귀가 생겼다(/request
-  // 페이지에는 이런 overflow-hidden 조상이 없어서 그때는 드러나지 않았다). window만 명시적으로
-  // 스크롤해 이 문제를 피한다 — 어떤 조상 요소도 건드리지 않는다.
-  useEffect(() => {
-    if (!open) return
-    const el = listRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const overflow = rect.bottom - window.innerHeight
-    if (overflow > 0) {
-      window.scrollBy({ top: overflow + 16, behavior: 'smooth' })
-    }
-  }, [open])
-
   function openList() {
+    const rect = buttonRef.current?.getBoundingClientRect()
+    if (rect) {
+      const estimatedHeight = Math.min(options.length * 40 + 8, 248)
+      const spaceBelow = window.innerHeight - rect.bottom
+      const openUpward = spaceBelow < estimatedHeight && rect.top > estimatedHeight
+      setPosition({
+        top: openUpward ? rect.top - estimatedHeight - 4 : rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
     setOpen(true)
     setHighlightedIndex(options.findIndex((o) => o.value === value))
   }
@@ -141,31 +141,36 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
-      {open && (
-        <ul
-          ref={listRef}
-          role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-input border border-neutral-200 bg-neutral-0 py-1 shadow-lg"
-        >
-          {options.map((opt, i) => (
-            <li
-              key={opt.value}
-              role="option"
-              aria-selected={opt.value === value}
-              onMouseEnter={() => setHighlightedIndex(i)}
-              onClick={(e: ReactMouseEvent) => {
-                e.stopPropagation()
-                selectOption(i)
-              }}
-              className={`cursor-pointer px-4 py-2 text-body text-neutral-900 ${i === highlightedIndex ? 'bg-primary-50' : ''} ${
-                opt.value === value ? 'font-medium text-primary-600' : ''
-              }`}
-            >
-              {opt.label}
-            </li>
-          ))}
-        </ul>
-      )}
+      {open &&
+        position &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <ul
+            ref={listRef}
+            role="listbox"
+            style={{ position: 'fixed', top: position.top, left: position.left, width: position.width }}
+            className="z-50 max-h-60 overflow-auto rounded-input border border-neutral-200 bg-neutral-0 py-1 shadow-lg"
+          >
+            {options.map((opt, i) => (
+              <li
+                key={opt.value}
+                role="option"
+                aria-selected={opt.value === value}
+                onMouseEnter={() => setHighlightedIndex(i)}
+                onClick={(e: ReactMouseEvent) => {
+                  e.stopPropagation()
+                  selectOption(i)
+                }}
+                className={`cursor-pointer px-4 py-2 text-body text-neutral-900 ${i === highlightedIndex ? 'bg-primary-50' : ''} ${
+                  opt.value === value ? 'font-medium text-primary-600' : ''
+                }`}
+              >
+                {opt.label}
+              </li>
+            ))}
+          </ul>,
+          document.body,
+        )}
     </div>
   )
 }
