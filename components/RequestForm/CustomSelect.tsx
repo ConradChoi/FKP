@@ -26,6 +26,7 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const listRef = useRef<HTMLUListElement>(null)
   // FormField wraps this component in a native <label>. Clicking an <li> inside it makes the
   // browser ALSO fire a separate native synthetic click directly on the <button> (the label's
   // associated control) right after — this is the browser's built-in label-activation behavior,
@@ -46,6 +47,13 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [open])
+
+  // Design Ref: 대표 피드백(2026-08-27) — 드롭다운이 화면 하단으로 넘어가면 자동 스크롤 없이는
+  // 잘려 보인다는 지적(모바일 스크린샷). 열릴 때 목록 전체가 뷰포트 안에 들어오도록 스크롤한다.
+  useEffect(() => {
+    if (!open) return
+    listRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [open])
 
   function openList() {
@@ -121,6 +129,7 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
       </button>
       {open && (
         <ul
+          ref={listRef}
           role="listbox"
           className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-input border border-neutral-200 bg-neutral-0 py-1 shadow-lg"
         >
