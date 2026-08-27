@@ -51,9 +51,23 @@ export function CustomSelect({ value, onChange, placeholder, options, onFocus, c
 
   // Design Ref: 대표 피드백(2026-08-27) — 드롭다운이 화면 하단으로 넘어가면 자동 스크롤 없이는
   // 잘려 보인다는 지적(모바일 스크린샷). 열릴 때 목록 전체가 뷰포트 안에 들어오도록 스크롤한다.
+  //
+  // BUG FIX (같은 날, 후속 리포트): el.scrollIntoView()는 "가장 가까운 스크롤 가능한 조상"을
+  // 브라우저가 알아서 고르는데, Hero 카루셀 트랙처럼 overflow-hidden + 고정 height를 가진
+  // 컨테이너도 (스크롤바가 안 보여도) scrollHeight > clientHeight라서 "스크롤 가능"으로 취급된다.
+  // 그 결과 Hero 안에서 카테고리 드롭다운을 열면 트랙 내부가 프로그램적으로 스크롤되어, 위에 있는
+  // "What are you looking for" textarea가 그 안에서 밀려 올라가 안 보이는 회귀가 생겼다(/request
+  // 페이지에는 이런 overflow-hidden 조상이 없어서 그때는 드러나지 않았다). window만 명시적으로
+  // 스크롤해 이 문제를 피한다 — 어떤 조상 요소도 건드리지 않는다.
   useEffect(() => {
     if (!open) return
-    listRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    const el = listRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const overflow = rect.bottom - window.innerHeight
+    if (overflow > 0) {
+      window.scrollBy({ top: overflow + 16, behavior: 'smooth' })
+    }
   }, [open])
 
   function openList() {
