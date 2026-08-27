@@ -4,6 +4,7 @@
 import type { Dictionary } from '@/lib/i18n/types'
 import type { RequestFormState } from '@/types/request-form'
 import { FormField } from './FormField'
+import { CustomSelect } from './CustomSelect'
 import { inputClass, primaryButtonClass, secondaryButtonClass } from './styles'
 
 interface Step2Props {
@@ -23,18 +24,12 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
       <p className="text-label-button text-primary-600">{step2.label}</p>
 
       <FormField label={step2.partnerType.label} error={errors.partnerType}>
-        <select
-          className={inputClass}
+        <CustomSelect
           value={formData.partnerType}
-          onChange={(e) => onChange('partnerType', e.target.value)}
-        >
-          <option value="">{selectPlaceholder}</option>
-          {Object.entries(step2.partnerType.options).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => onChange('partnerType', value)}
+          placeholder={selectPlaceholder}
+          options={Object.entries(step2.partnerType.options).map(([key, label]) => ({ value: key, label }))}
+        />
       </FormField>
 
       <FormField label={step2.purpose.label} error={errors.purpose}>
@@ -58,48 +53,30 @@ export function Step2({ dict, formData, errors, onChange, onNext, onBack }: Step
       </FormField>
 
       <FormField label={step2.budget.label} error={errors.budget}>
-        <select
-          className={inputClass}
+        <CustomSelect
           value={formData.budget}
-          onChange={(e) => onChange('budget', e.target.value)}
-        >
-          <option value="">{selectPlaceholder}</option>
-          {Object.entries(step2.budget.options).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => onChange('budget', value)}
+          placeholder={selectPlaceholder}
+          options={Object.entries(step2.budget.options).map(([key, label]) => ({ value: key, label }))}
+        />
       </FormField>
 
       <FormField label={step2.timeline.label} error={errors.timeline}>
-        <select
-          className={inputClass}
+        <CustomSelect
           value={formData.timeline}
-          onChange={(e) => onChange('timeline', e.target.value)}
-        >
-          <option value="">{selectPlaceholder}</option>
-          {Object.entries(step2.timeline.options).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => onChange('timeline', value)}
+          placeholder={selectPlaceholder}
+          options={Object.entries(step2.timeline.options).map(([key, label]) => ({ value: key, label }))}
+        />
       </FormField>
 
       <FormField label={step2.englishSpeaking.label} error={errors.englishSpeaking}>
-        <select
-          className={inputClass}
+        <CustomSelect
           value={formData.englishSpeaking}
-          onChange={(e) => onChange('englishSpeaking', e.target.value)}
-        >
-          <option value="">{selectPlaceholder}</option>
-          {Object.entries(step2.englishSpeaking.options).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
-        </select>
+          onChange={(value) => onChange('englishSpeaking', value)}
+          placeholder={selectPlaceholder}
+          options={Object.entries(step2.englishSpeaking.options).map(([key, label]) => ({ value: key, label }))}
+        />
       </FormField>
 
       <div className="flex justify-between">

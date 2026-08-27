@@ -81,27 +81,41 @@ export async function getGtagCalls(page: Page): Promise<unknown[][]> {
   return page.evaluate(() => (window as unknown as { __gtagCalls?: unknown[][] }).__gtagCalls ?? [])
 }
 
+// Design Ref: Step1/Step2's <select> elements were replaced by a custom combobox
+// (components/RequestForm/CustomSelect.tsx, 대표 피드백 2026-08-27 — native <option> list
+// couldn't be styled and looked broken, especially on mobile). getByLabel() still resolves
+// to the combobox <button> (first focusable descendant of the <label>), so clicking it opens
+// the list; the desired value is then picked by its visible option label text, not the value.
+export async function selectCustomOption(page: Page, fieldLabel: string, optionLabel: string) {
+  await page.getByLabel(fieldLabel).click()
+  await page.getByRole('option', { name: optionLabel, exact: true }).click()
+}
+
 /** Home page: Step1 lives inside the Hero, submitted via the "Start My Request" CTA. */
 export async function fillHeroStep1(page: Page, dict: Dictionary, values: RequestFormValues) {
   await page.getByLabel(dict.requestForm.step1.whatLookingFor.label).fill(values.whatLookingFor)
-  await page.getByLabel(dict.requestForm.step1.category.label).selectOption(values.category)
+  await selectCustomOption(page, dict.requestForm.step1.category.label, dict.categories.items[values.category as keyof typeof dict.categories.items].name)
   await page.getByRole('button', { name: dict.hero.ctaText, exact: true }).click()
 }
 
 /** /request page: Step1 is the flat panel form, submitted via the generic "Next" button. */
-export async function fillStep1(page: Page, dict: Dictionary['requestForm'], values: RequestFormValues) {
-  await page.getByLabel(dict.step1.whatLookingFor.label).fill(values.whatLookingFor)
-  await page.getByLabel(dict.step1.category.label).selectOption(values.category)
-  await page.getByRole('button', { name: dict.buttons.next, exact: true }).click()
+export async function fillStep1(page: Page, dict: Dictionary, values: RequestFormValues) {
+  await page.getByLabel(dict.requestForm.step1.whatLookingFor.label).fill(values.whatLookingFor)
+  await selectCustomOption(page, dict.requestForm.step1.category.label, dict.categories.items[values.category as keyof typeof dict.categories.items].name)
+  await page.getByRole('button', { name: dict.requestForm.buttons.next, exact: true }).click()
 }
 
 export async function fillStep2(page: Page, dict: Dictionary['requestForm'], values: RequestFormValues) {
-  await page.getByLabel(dict.step2.partnerType.label).selectOption(values.partnerType)
+  await selectCustomOption(page, dict.step2.partnerType.label, dict.step2.partnerType.options[values.partnerType as keyof typeof dict.step2.partnerType.options])
   await page.getByLabel(dict.step2.purpose.label).fill(values.purpose)
   await page.getByLabel(dict.step2.description.label).fill(values.description)
-  await page.getByLabel(dict.step2.budget.label).selectOption(values.budget)
-  await page.getByLabel(dict.step2.timeline.label).selectOption(values.timeline)
-  await page.getByLabel(dict.step2.englishSpeaking.label).selectOption(values.englishSpeaking)
+  await selectCustomOption(page, dict.step2.budget.label, dict.step2.budget.options[values.budget as keyof typeof dict.step2.budget.options])
+  await selectCustomOption(page, dict.step2.timeline.label, dict.step2.timeline.options[values.timeline as keyof typeof dict.step2.timeline.options])
+  await selectCustomOption(
+    page,
+    dict.step2.englishSpeaking.label,
+    dict.step2.englishSpeaking.options[values.englishSpeaking as keyof typeof dict.step2.englishSpeaking.options],
+  )
   await page.getByRole('button', { name: dict.buttons.next, exact: true }).click()
 }
 

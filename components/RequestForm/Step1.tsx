@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import type { Dictionary } from '@/lib/i18n/types'
 import type { RequestFormState } from '@/types/request-form'
 import { FormField } from './FormField'
+import { CustomSelect } from './CustomSelect'
 import { inputClass, primaryButtonClass } from './styles'
 
 const CATEGORY_HIGHLIGHT_MS = 1200
@@ -71,21 +72,14 @@ export function Step1({
       </FormField>
 
       <FormField label={step1.category.label} error={errors.category}>
-        <select
-          className={`${inputClass} transition-shadow duration-300 ${
-            categoryHighlighted ? 'ring-2 ring-primary-400 ring-offset-2' : ''
-          }`}
+        <CustomSelect
+          className={`transition-shadow duration-300 ${categoryHighlighted ? 'ring-2 ring-primary-400 ring-offset-2' : ''}`}
           value={formData.category}
-          onChange={(e) => onChange('category', e.target.value)}
+          onChange={(value) => onChange('category', value)}
           onFocus={onFieldFocus}
-        >
-          <option value="">{selectPlaceholder}</option>
-          {Object.entries(categoriesDict.items).map(([key, info]) => (
-            <option key={key} value={key}>
-              {info.name}
-            </option>
-          ))}
-        </select>
+          placeholder={selectPlaceholder}
+          options={Object.entries(categoriesDict.items).map(([key, info]) => ({ value: key, label: info.name }))}
+        />
       </FormField>
 
       {isHero ? (

@@ -15,6 +15,7 @@ import {
   fillStep2,
   fillStep3,
   confirmSubmitModal,
+  selectCustomOption,
   sampleEn,
   sampleJa,
 } from './utils'
@@ -80,17 +81,21 @@ test('3. 검증/에러 처리 — 각 단계에서 인라인 에러가 노출되
 
   // Step1 입력 후 Panel 2로 슬라이드, Step2 필수값(budget) 비워두고 Next
   await fillHeroStep1(page, en, sampleEn)
-  await page.getByLabel(en.requestForm.step2.partnerType.label).selectOption(sampleEn.partnerType)
+  await selectCustomOption(page, en.requestForm.step2.partnerType.label, en.requestForm.step2.partnerType.options[sampleEn.partnerType as keyof typeof en.requestForm.step2.partnerType.options])
   await page.getByLabel(en.requestForm.step2.purpose.label).fill(sampleEn.purpose)
   await page.getByLabel(en.requestForm.step2.description.label).fill(sampleEn.description)
-  await page.getByLabel(en.requestForm.step2.timeline.label).selectOption(sampleEn.timeline)
-  await page.getByLabel(en.requestForm.step2.englishSpeaking.label).selectOption(sampleEn.englishSpeaking)
+  await selectCustomOption(page, en.requestForm.step2.timeline.label, en.requestForm.step2.timeline.options[sampleEn.timeline as keyof typeof en.requestForm.step2.timeline.options])
+  await selectCustomOption(
+    page,
+    en.requestForm.step2.englishSpeaking.label,
+    en.requestForm.step2.englishSpeaking.options[sampleEn.englishSpeaking as keyof typeof en.requestForm.step2.englishSpeaking.options],
+  )
   await page.getByRole('button', { name: en.requestForm.buttons.next, exact: true }).click()
   await expect(page.getByText(en.requestForm.validation.required).first()).toBeVisible()
   await expect(page.getByText(en.requestForm.step2.label)).toBeVisible()
 
   // budget 채우고 Step3 진입, 잘못된 이메일 입력
-  await page.getByLabel(en.requestForm.step2.budget.label).selectOption(sampleEn.budget)
+  await selectCustomOption(page, en.requestForm.step2.budget.label, en.requestForm.step2.budget.options[sampleEn.budget as keyof typeof en.requestForm.step2.budget.options])
   await page.getByRole('button', { name: en.requestForm.buttons.next, exact: true }).click()
   await page.getByLabel(en.requestForm.step3.companyNameWebsite.label).fill(sampleEn.companyNameWebsite)
   await page.getByLabel(en.requestForm.step3.contact.label).fill('not-an-email')
@@ -167,7 +172,7 @@ test('7. /request 전용 페이지 — Step1~3 연속 배치로 제출까지 완
   await expect(page.getByText(en.requestPage.intro)).toBeVisible()
   await expect(page.getByText(en.requestForm.step1.label)).toBeVisible()
 
-  await fillStep1(page, en.requestForm, sampleEn)
+  await fillStep1(page, en, sampleEn)
   await fillStep2(page, en.requestForm, sampleEn)
   await fillStep3(page, en.requestForm, sampleEn)
 

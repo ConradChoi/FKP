@@ -145,7 +145,7 @@ test('10. Categories 카드 클릭(idle) — Hero에 category가 프리필된다
   const firstCard = page.getByRole('button', { name: new RegExp(`^${en.categories.items.education.name}`) })
   await firstCard.click()
 
-  await expect(page.getByLabel(en.requestForm.step1.category.label)).toHaveValue('education')
+  await expect(page.getByLabel(en.requestForm.step1.category.label)).toHaveText(en.categories.items.education.name)
   await expect(page.getByLabel(en.requestForm.step1.whatLookingFor.label)).toBeInViewport()
 })
 
@@ -198,7 +198,7 @@ test('14. Categories 카드 클릭(step2 진행 중) — Panel1로 슬라이드�
 
   // Design Ref: flow spec §13.4 — same mechanism as Back: slides to Panel1 and prefills
   // category, Panel2's half-filled value is preserved underneath (not cleared).
-  await expect(page.getByLabel(en.requestForm.step1.category.label)).toHaveValue('it-ai')
+  await expect(page.getByLabel(en.requestForm.step1.category.label)).toHaveText(en.categories.items['it-ai'].name)
   await expect(page.getByLabel(en.requestForm.step1.whatLookingFor.label)).toBeInViewport()
 
   await page.getByRole('button', { name: en.hero.ctaText, exact: true }).click()
