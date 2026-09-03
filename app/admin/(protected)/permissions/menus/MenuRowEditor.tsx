@@ -4,14 +4,13 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateMenuAction, deleteMenuAction, moveMenuAction } from './actions'
 import type { MenuRecord } from './page'
-import { errorTextClass } from '@/components/RequestForm/styles'
 
 // Design Ref: 대표 피드백(2026-08-27) — 메뉴관리 표가 메뉴권한관리(체크박스 + 일반 텍스트,
 // 테두리 없음)와 다르게 모든 칸에 항상 테두리 있는 입력창이 보여 화면 톤이 어긋났다.
 // 같은 값이라도 평소엔 일반 텍스트처럼 보이다가 hover/focus 시에만 편집 가능한 입력창
 // 느낌이 나도록 통일한다(둘 다 border-transparent 기본, focus 시에만 테두리/배경 표시).
 const cellInputClass =
-  'w-full rounded-input border border-transparent bg-transparent px-2 py-1 text-body-sm text-neutral-900 hover:border-neutral-200 focus:border-primary-500 focus:bg-neutral-0 focus:outline-none focus:ring-1 focus:ring-primary-500'
+  'w-full rounded-input border border-transparent bg-transparent px-2 py-1 admin-body text-neutral-900 hover:border-neutral-200 focus:border-primary-500 focus:bg-neutral-0 focus:outline-none focus:ring-1 focus:ring-primary-500'
 
 export function MenuRowEditor({
   menu,
@@ -75,9 +74,9 @@ export function MenuRowEditor({
     <tr className="border-b border-neutral-100 last:border-0">
       <td className="px-4 py-2" style={{ paddingLeft: `${16 + depth * 20}px` }}>
         <input className={cellInputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
-        {menu.menu_type === 'group' && <span className="ml-1 text-label-caption text-neutral-400">(그룹)</span>}
+        {menu.menu_type === 'group' && <span className="ml-1 admin-label-sm text-neutral-400">(그룹)</span>}
       </td>
-      <td className="px-4 py-2 font-mono text-label-caption text-neutral-500">{menu.code}</td>
+      <td className="px-4 py-2 font-mono admin-label-sm text-neutral-500">{menu.code}</td>
       <td className="px-4 py-2">
         <input
           className={cellInputClass}
@@ -112,7 +111,7 @@ export function MenuRowEditor({
         <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
       </td>
       <td className="px-4 py-2">
-        <div className="flex items-center gap-3 text-body-sm">
+        <div className="flex items-center gap-3 admin-body-sm">
           {dirty && (
             <button type="button" onClick={save} disabled={saving} className="text-primary-600 hover:underline">
               저장
@@ -122,7 +121,7 @@ export function MenuRowEditor({
             삭제
           </button>
         </div>
-        {error && <p className={errorTextClass}>{error}</p>}
+        {error && <p className="admin-label-sm text-error">{error}</p>}
       </td>
     </tr>
   )

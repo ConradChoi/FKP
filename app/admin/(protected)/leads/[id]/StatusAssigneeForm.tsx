@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { STATUS_LABELS, STATUS_ORDER } from '@/lib/admin/labels'
 import { updateLeadStatusAction, updateLeadAssigneeAction } from './actions'
-import { inputClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass } from '@/components/admin/styles'
 
 interface AdminOption {
   id: string
@@ -60,9 +60,9 @@ export function StatusAssigneeForm({
     <section className="rounded-card border border-neutral-200 bg-neutral-0 p-6">
       <div className="flex flex-wrap gap-6">
         <div>
-          <label className="mb-1 block text-label-caption text-neutral-500">상태</label>
+          <label className="mb-1 block admin-label-sm text-neutral-500">상태</label>
           <select
-            className={inputClass}
+            className={adminInputClass}
             value={status}
             disabled={savingField === 'status'}
             onChange={(e) => handleStatusChange(e.target.value)}
@@ -75,9 +75,9 @@ export function StatusAssigneeForm({
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-label-caption text-neutral-500">담당자</label>
+          <label className="mb-1 block admin-label-sm text-neutral-500">담당자</label>
           <select
-            className={inputClass}
+            className={adminInputClass}
             value={assigneeId}
             disabled={savingField === 'assignee'}
             onChange={(e) => handleAssigneeChange(e.target.value)}
@@ -91,7 +91,7 @@ export function StatusAssigneeForm({
           </select>
         </div>
       </div>
-      {error && <p className={`mt-3 ${errorTextClass}`}>{error}</p>}
+      {error && <p className="mt-3 admin-label-sm text-error">{error}</p>}
     </section>
   )
 }

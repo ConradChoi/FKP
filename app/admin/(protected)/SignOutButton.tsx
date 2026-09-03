@@ -20,7 +20,7 @@ export function SignOutButton() {
       type="button"
       onClick={handleSignOut}
       disabled={loading}
-      className="rounded-input border border-neutral-300 px-3 py-1.5 text-label-caption text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+      className="shrink-0 rounded-input border border-white/15 px-3 py-1.5 admin-label-sm text-sidebar-textInactive transition-colors hover:bg-white/5 hover:text-neutral-0 disabled:cursor-not-allowed disabled:opacity-50"
     >
       로그아웃
     </button>

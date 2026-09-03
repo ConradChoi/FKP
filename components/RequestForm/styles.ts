@@ -9,3 +9,9 @@ export const secondaryButtonClass =
   'rounded-input border border-neutral-300 px-6 py-3 text-label-button text-neutral-700 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50'
 
 export const errorTextClass = 'text-label-caption text-error'
+
+// Design Ref: docs/02-design/features/partner-supplier-app.ui-spec.md §9 프론트엔드 구현
+// 메모 3 — destructive-action variant (SUP-13 탈퇴 버튼, SUP-14 모달 확인 버튼), same shape
+// as admin's adminButtonDestructiveClass but sized to this file's buyer scale.
+export const destructiveButtonClass =
+  'rounded-input border border-error px-6 py-3 text-label-button text-error transition-colors hover:bg-error-100 disabled:cursor-not-allowed disabled:opacity-50'

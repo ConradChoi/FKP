@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateArticleItemAction, deleteContentItemAction, upsertFaqTranslationAction } from './actions'
 import { computeTranslationBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
-import { errorTextClass, inputClass } from '@/components/RequestForm/styles'
+import { adminInputClass } from '@/components/admin/styles'
 
 export interface FaqTranslationRow extends TranslationRow {
   question: string
@@ -31,7 +31,7 @@ const STATUS_OPTIONS: { value: 'draft' | 'translated' | 'published'; label: stri
 ]
 
 function Badge({ label, tone }: { label: string; tone: keyof typeof TONE_CLASS }) {
-  return <span className={`rounded-full px-2 py-1 text-label-caption ${TONE_CLASS[tone]}`}>{label}</span>
+  return <span className={`rounded-full px-2 py-1 admin-label-sm ${TONE_CLASS[tone]}`}>{label}</span>
 }
 
 function FaqTranslationEditor({
@@ -75,18 +75,18 @@ function FaqTranslationEditor({
   return (
     <div className="rounded-card border border-neutral-200 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-body-sm font-medium text-neutral-900">{label}</p>
+        <p className="admin-body-sm font-medium text-neutral-900">{label}</p>
         <Badge label={badge.label} tone={badge.tone} />
       </div>
       <div className="mt-3 space-y-2">
-        <input className={inputClass} placeholder="질문" value={question} onChange={(e) => setQuestion(e.target.value)} />
+        <input className={adminInputClass} placeholder="질문" value={question} onChange={(e) => setQuestion(e.target.value)} />
         <textarea
-          className={`${inputClass} min-h-[100px]`}
+          className={`${adminInputClass} min-h-[100px]`}
           placeholder="답변"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
         />
-        <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        <select className={adminInputClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -94,12 +94,12 @@ function FaqTranslationEditor({
           ))}
         </select>
       </div>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <button
         type="button"
         onClick={save}
         disabled={saving || !question}
-        className="mt-3 rounded-input bg-primary-600 px-4 py-2 text-label-caption text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+        className="mt-3 rounded-input bg-primary-600 px-4 py-2 admin-label-sm text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
       >
         저장
       </button>
@@ -143,17 +143,17 @@ export function FaqRow({ faq }: { faq: FaqRecord }) {
   return (
     <div className="rounded-card border border-neutral-200 bg-neutral-0">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-body-sm text-primary-600 hover:underline">
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="admin-body-sm text-primary-600 hover:underline">
           {expanded ? '접기' : '편집'}
         </button>
-        <span className="font-mono text-label-caption text-neutral-500">{faq.slug}</span>
+        <span className="font-mono admin-label-sm text-neutral-500">{faq.slug}</span>
         <input
           type="number"
-          className={`${inputClass} w-16 py-1 text-center`}
+          className={`${adminInputClass} w-16 py-1 text-center`}
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
-        <label className="flex items-center gap-1 text-body-sm text-neutral-600">
+        <label className="flex items-center gap-1 admin-body-sm text-neutral-600">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           활성
         </label>
@@ -165,16 +165,16 @@ export function FaqRow({ faq }: { faq: FaqRecord }) {
         </div>
         <div className="ml-auto flex items-center gap-3">
           {dirty && (
-            <button type="button" onClick={saveSummary} disabled={saving} className="text-body-sm text-primary-600 hover:underline">
+            <button type="button" onClick={saveSummary} disabled={saving} className="admin-body-sm text-primary-600 hover:underline">
               저장
             </button>
           )}
-          <button type="button" onClick={remove} className="text-body-sm text-error hover:underline">
+          <button type="button" onClick={remove} className="admin-body-sm text-error hover:underline">
             삭제
           </button>
         </div>
       </div>
-      {error && <p className={`px-4 pb-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`px-4 pb-2 admin-label-sm text-error`}>{error}</p>}
       {expanded && (
         <div className="grid gap-3 border-t border-neutral-100 p-4 sm:grid-cols-2">
           {LOCALES.map(({ key, label, isSource }) => (

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateArticleItemAction, deleteContentItemAction, upsertArticleTranslationAction } from './actions'
 import { computeTranslationBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
-import { errorTextClass, inputClass } from '@/components/RequestForm/styles'
+import { adminInputClass } from '@/components/admin/styles'
 
 export interface ArticleTranslationRow extends TranslationRow {
   title: string
@@ -32,7 +32,7 @@ const STATUS_OPTIONS: { value: 'draft' | 'translated' | 'published'; label: stri
 ]
 
 function Badge({ label, tone }: { label: string; tone: keyof typeof TONE_CLASS }) {
-  return <span className={`rounded-full px-2 py-1 text-label-caption ${TONE_CLASS[tone]}`}>{label}</span>
+  return <span className={`rounded-full px-2 py-1 admin-label-sm ${TONE_CLASS[tone]}`}>{label}</span>
 }
 
 function ArticleTranslationEditor({
@@ -77,24 +77,24 @@ function ArticleTranslationEditor({
   return (
     <div className="rounded-card border border-neutral-200 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-body-sm font-medium text-neutral-900">{label}</p>
+        <p className="admin-body-sm font-medium text-neutral-900">{label}</p>
         <Badge label={badge.label} tone={badge.tone} />
       </div>
       <div className="mt-3 space-y-2">
-        <input className={inputClass} placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <input className={adminInputClass} placeholder="제목" value={title} onChange={(e) => setTitle(e.target.value)} />
         <textarea
-          className={`${inputClass} min-h-[56px]`}
+          className={`${adminInputClass} min-h-[56px]`}
           placeholder="요약 (150자 내외 권장)"
           value={excerpt}
           onChange={(e) => setExcerpt(e.target.value)}
         />
         <textarea
-          className={`${inputClass} min-h-[200px] font-mono text-body-sm`}
+          className={`${adminInputClass} min-h-[200px] font-mono admin-body-sm`}
           placeholder="본문 (마크다운: #/## 제목, **굵게**, - 목록, 1. 번호목록, |표|, [링크](url))"
           value={bodyMarkdown}
           onChange={(e) => setBodyMarkdown(e.target.value)}
         />
-        <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        <select className={adminInputClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
           {STATUS_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}
@@ -102,12 +102,12 @@ function ArticleTranslationEditor({
           ))}
         </select>
       </div>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <button
         type="button"
         onClick={save}
         disabled={saving || !title}
-        className="mt-3 rounded-input bg-primary-600 px-4 py-2 text-label-caption text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+        className="mt-3 rounded-input bg-primary-600 px-4 py-2 admin-label-sm text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
       >
         저장
       </button>
@@ -156,19 +156,19 @@ export function ArticleRow({ article, urlSegment }: { article: ArticleRecord; ur
   return (
     <div className="rounded-card border border-neutral-200 bg-neutral-0">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-body-sm text-primary-600 hover:underline">
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="admin-body-sm text-primary-600 hover:underline">
           {expanded ? '접기' : '편집'}
         </button>
-        <span className="font-mono text-label-caption text-neutral-500">
+        <span className="font-mono admin-label-sm text-neutral-500">
           /{urlSegment}/{article.slug}
         </span>
         <input
           type="number"
-          className={`${inputClass} w-16 py-1 text-center`}
+          className={`${adminInputClass} w-16 py-1 text-center`}
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
-        <label className="flex items-center gap-1 text-body-sm text-neutral-600">
+        <label className="flex items-center gap-1 admin-body-sm text-neutral-600">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           활성
         </label>
@@ -180,16 +180,16 @@ export function ArticleRow({ article, urlSegment }: { article: ArticleRecord; ur
         </div>
         <div className="ml-auto flex items-center gap-3">
           {dirty && (
-            <button type="button" onClick={saveSummary} disabled={saving} className="text-body-sm text-primary-600 hover:underline">
+            <button type="button" onClick={saveSummary} disabled={saving} className="admin-body-sm text-primary-600 hover:underline">
               저장
             </button>
           )}
-          <button type="button" onClick={remove} className="text-body-sm text-error hover:underline">
+          <button type="button" onClick={remove} className="admin-body-sm text-error hover:underline">
             삭제
           </button>
         </div>
       </div>
-      {error && <p className={`px-4 pb-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`px-4 pb-2 admin-label-sm text-error`}>{error}</p>}
       {expanded && (
         <div className="grid gap-3 border-t border-neutral-100 p-4 sm:grid-cols-2">
           {LOCALES.map(({ key, label, isSource }) => (

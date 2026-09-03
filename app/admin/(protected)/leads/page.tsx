@@ -4,8 +4,12 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
-import { CATEGORY_LABELS, STATUS_LABELS, STATUS_ORDER, label } from '@/lib/admin/labels'
+import { CATEGORY_LABELS, STATUS_LABELS, STATUS_ORDER, STATUS_TONE, label } from '@/lib/admin/labels'
 import { LeadFilters } from './LeadFilters'
+import { LeadStatusTabs } from './LeadStatusTabs'
+import { DeleteClosedLeadButton } from './DeleteClosedLeadButton'
+import { Avatar } from '@/components/admin/Avatar'
+import { StatusBadge } from '@/components/admin/StatusBadge'
 
 const PAGE_SIZE = 20
 
@@ -35,6 +39,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     .select('id, what_looking_for, category, status, assignee_id, company_name_website, contact_masked, created_at', {
       count: 'exact',
     })
+    .is('hidden_at', null)
 
   if (status && STATUS_ORDER.includes(status as (typeof STATUS_ORDER)[number])) {
     query = query.eq('status', status)
@@ -52,50 +57,68 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
 
   return (
-    <div className="mx-auto max-w-[1100px]">
-      <h1 className="text-h3 text-primary-900">요청관리</h1>
-      <p className="mt-1 text-body-sm text-neutral-600">총 {count ?? 0}건</p>
+    <div>
+      <p className="admin-body-sm text-neutral-500">총 {count ?? 0}건</p>
 
+      <div className="mt-4">
+        <LeadStatusTabs currentStatus={status} currentQuery={q} />
+      </div>
       <LeadFilters currentStatus={status} currentQuery={q} />
 
-      {error && <p className="mt-6 text-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
+      {error && <p className="mt-6 admin-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
 
       <div className="mt-4 overflow-x-auto rounded-card border border-neutral-200 bg-neutral-0">
-        <table className="w-full text-body-sm">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-28" />
+            <col className="w-32" />
+            <col />
+            <col className="w-56" />
+            <col className="w-28" />
+            <col className="w-28" />
+            <col className="w-20" />
+          </colgroup>
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
-              <th className="px-4 py-3 font-medium">접수일</th>
-              <th className="px-4 py-3 font-medium">카테고리</th>
-              <th className="px-4 py-3 font-medium">회사명</th>
-              <th className="px-4 py-3 font-medium">연락처</th>
-              <th className="px-4 py-3 font-medium">상태</th>
-              <th className="px-4 py-3 font-medium">담당자</th>
+            <tr className="border-b border-neutral-200 text-left">
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">접수일</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">카테고리</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">회사명</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">연락처</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">상태</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">담당자</th>
+              <th className="whitespace-nowrap px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">관리</th>
             </tr>
           </thead>
           <tbody>
             {(requests ?? []).map((req) => (
               <tr key={req.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 admin-body">
                   <Link href={`/admin/leads/${req.id}`} className="block text-primary-600 hover:underline">
                     {new Date(req.created_at).toLocaleDateString('ko-KR')}
                   </Link>
                 </td>
-                <td className="px-4 py-3">{label(CATEGORY_LABELS, req.category)}</td>
-                <td className="px-4 py-3">{req.company_name_website}</td>
-                <td className="px-4 py-3 text-neutral-500">{req.contact_masked}</td>
+                <td className="px-4 py-3 admin-body">{label(CATEGORY_LABELS, req.category)}</td>
+                <td className="px-4 py-3 admin-body">
+                  <div className="flex items-center gap-2.5">
+                    <Avatar name={req.company_name_website} size="sm" />
+                    <span className="truncate">{req.company_name_website}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 admin-body text-neutral-500">{req.contact_masked}</td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-neutral-100 px-2 py-1 text-label-caption">
-                    {label(STATUS_LABELS, req.status)}
-                  </span>
+                  <StatusBadge tone={STATUS_TONE[req.status as keyof typeof STATUS_TONE]} label={label(STATUS_LABELS, req.status)} />
+                </td>
+                <td className="px-4 py-3 admin-body">
+                  {req.assignee_id ? (adminNameById.get(req.assignee_id) ?? '(권한 밖 계정)') : '-'}
                 </td>
                 <td className="px-4 py-3">
-                  {req.assignee_id ? (adminNameById.get(req.assignee_id) ?? '(권한 밖 계정)') : '-'}
+                  {req.status === 'closed' ? <DeleteClosedLeadButton requestId={req.id} /> : <span className="text-neutral-300">-</span>}
                 </td>
               </tr>
             ))}
             {(requests ?? []).length === 0 && !error && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-neutral-400">
+                <td colSpan={7} className="px-4 py-8 text-center admin-body text-neutral-400">
                   조건에 맞는 요청이 없습니다.
                 </td>
               </tr>
@@ -105,7 +128,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       </div>
 
       {totalPages > 1 && (
-        <div className="mt-4 flex items-center justify-center gap-2 text-body-sm">
+        <div className="mt-4 flex items-center justify-center gap-2 admin-body-sm">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}

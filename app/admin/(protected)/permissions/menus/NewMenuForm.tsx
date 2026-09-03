@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMenuAction } from './actions'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 
 interface ParentOption {
   id: string
@@ -48,7 +48,7 @@ export function NewMenuForm({ parentOptions }: { parentOptions: ParentOption[] }
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={primaryButtonClass}>
+      <button type="button" onClick={() => setOpen(true)} className={adminButtonPrimaryClass}>
         + 새 메뉴 추가
       </button>
     )
@@ -58,24 +58,24 @@ export function NewMenuForm({ parentOptions }: { parentOptions: ParentOption[] }
     <form onSubmit={handleSubmit} className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="코드 (예: reports)"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           required
         />
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="표시명"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
         />
-        <select className={inputClass} value={menuType} onChange={(e) => setMenuType(e.target.value as 'page' | 'group')}>
+        <select className={adminInputClass} value={menuType} onChange={(e) => setMenuType(e.target.value as 'page' | 'group')}>
           <option value="page">페이지</option>
           <option value="group">그룹</option>
         </select>
-        <select className={inputClass} value={parentId} onChange={(e) => setParentId(e.target.value)}>
+        <select className={adminInputClass} value={parentId} onChange={(e) => setParentId(e.target.value)}>
           <option value="">(최상위)</option>
           {parentOptions.map((p) => (
             <option key={p.id} value={p.id}>
@@ -84,22 +84,22 @@ export function NewMenuForm({ parentOptions }: { parentOptions: ParentOption[] }
           ))}
         </select>
         {menuType === 'page' && (
-          <input className={inputClass} placeholder="경로 (예: /admin/reports)" value={path} onChange={(e) => setPath(e.target.value)} />
+          <input className={adminInputClass} placeholder="경로 (예: /admin/reports)" value={path} onChange={(e) => setPath(e.target.value)} />
         )}
         <input
           type="number"
-          className={inputClass}
+          className={adminInputClass}
           placeholder="정렬순서"
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
       </div>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className="mt-2 admin-label-sm text-error">{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="submit" disabled={saving} className={primaryButtonClass}>
+        <button type="submit" disabled={saving} className={adminButtonPrimaryClass}>
           추가
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-body-sm text-neutral-500 hover:underline">
+        <button type="button" onClick={() => setOpen(false)} className="admin-body-sm text-neutral-500 hover:underline">
           취소
         </button>
       </div>

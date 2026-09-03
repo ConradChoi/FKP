@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createFaqAction } from './actions'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 
 export function NewFaqForm({ nextSortOrder }: { nextSortOrder: number }) {
   const router = useRouter()
@@ -34,7 +34,7 @@ export function NewFaqForm({ nextSortOrder }: { nextSortOrder: number }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={primaryButtonClass}>
+      <button type="button" onClick={() => setOpen(true)} className={adminButtonPrimaryClass}>
         + 새 질문 추가
       </button>
     )
@@ -44,7 +44,7 @@ export function NewFaqForm({ nextSortOrder }: { nextSortOrder: number }) {
     <form onSubmit={handleSubmit} className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
       <div className="grid grid-cols-2 gap-3">
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="슬러그 (내부 식별용, 예: pricing-1)"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
@@ -52,31 +52,31 @@ export function NewFaqForm({ nextSortOrder }: { nextSortOrder: number }) {
         />
         <input
           type="number"
-          className={inputClass}
+          className={adminInputClass}
           placeholder="정렬순서"
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
       </div>
       <input
-        className={`${inputClass} mt-3 w-full`}
+        className={`${adminInputClass} mt-3 w-full`}
         placeholder="영문 질문"
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
         required
       />
       <textarea
-        className={`${inputClass} mt-3 min-h-[100px] w-full`}
+        className={`${adminInputClass} mt-3 min-h-[100px] w-full`}
         placeholder="영문 답변"
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
       />
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="submit" disabled={saving} className={primaryButtonClass}>
+        <button type="submit" disabled={saving} className={adminButtonPrimaryClass}>
           추가
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-body-sm text-neutral-500 hover:underline">
+        <button type="button" onClick={() => setOpen(false)} className="admin-body-sm text-neutral-500 hover:underline">
           취소
         </button>
       </div>

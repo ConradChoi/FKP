@@ -34,3 +34,25 @@ export function flattenMenuTree<T>(
     ...flattenMenuTree(n.children as (T & MenuTreeNode<T>)[], depth + 1),
   ])
 }
+
+// Design Ref: seepn-admin-ui-design-system.spec.md §3.3 (AdminTopbar) — derives the page title
+// from the same DB-driven menu tree (INV-2 SSOT) instead of a new per-page title prop, so
+// adding a menu row is enough to give a new screen a topbar title. Longest-prefix match (not
+// exact-path match) so a dynamic detail route like /admin/leads/[id] still resolves to its
+// list screen's menu entry (/admin/leads) rather than falling back to no title at all.
+export function findMenuForPath<T extends { path: string | null }>(
+  flatNodes: { node: T }[],
+  pathname: string,
+): T | undefined {
+  let best: T | undefined
+  let bestLength = -1
+  for (const { node } of flatNodes) {
+    if (!node.path) continue
+    const isMatch = node.path === pathname || pathname.startsWith(`${node.path}/`)
+    if (isMatch && node.path.length > bestLength) {
+      best = node
+      bestLength = node.path.length
+    }
+  }
+  return best
+}

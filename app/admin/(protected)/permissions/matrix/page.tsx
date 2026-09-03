@@ -30,11 +30,10 @@ export default async function PermissionMatrixPage() {
   const flatMenus = flattenMenuTree(tree)
 
   return (
-    <div className="mx-auto max-w-[1000px]">
-      <h1 className="text-h3 text-primary-900">메뉴권한관리</h1>
-      <p className="mt-1 text-body-sm text-neutral-600">역할별로 메뉴에 대한 읽기/생성/수정/삭제/내보내기 권한을 지정합니다.</p>
+    <div>
+      <p className="admin-body-sm text-neutral-600">역할별로 메뉴에 대한 읽기/생성/수정/삭제/내보내기 권한을 지정합니다.</p>
 
-      {error && <p className="mt-4 text-body-sm text-error">불러오지 못했습니다: {error.message}</p>}
+      {error && <p className="mt-4 admin-body-sm text-error">불러오지 못했습니다: {error.message}</p>}
 
       <PermissionMatrix roles={roles ?? []} flatMenus={flatMenus} permissions={permissions ?? []} />
     </div>

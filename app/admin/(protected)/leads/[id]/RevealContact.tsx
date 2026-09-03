@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { revealContactAction } from './actions'
-import { errorTextClass } from '@/components/RequestForm/styles'
 
 export function RevealContact({
   requestId,
@@ -42,11 +41,11 @@ export function RevealContact({
         type="button"
         onClick={handleReveal}
         disabled={loading}
-        className="text-body-sm text-primary-600 underline hover:text-primary-700"
+        className="admin-body-sm text-primary-600 underline hover:text-primary-700"
       >
         {loading ? '확인 중...' : '원문 보기'}
       </button>
-      {error && <span className={errorTextClass}>{error}</span>}
+      {error && <span className="admin-label-sm text-error">{error}</span>}
     </span>
   )
 }

@@ -45,6 +45,23 @@ export async function updateInternalNoteAction(requestId: string, note: string):
   return { success: true }
 }
 
+// Design Ref: supabase/migrations/20260829120000_admin_lead_hide.sql — "화면에서 삭제"
+// (대표 요청, 2026-08-29). Sets requests.hidden_at, never deletes the row; /admin/leads's
+// list query excludes hidden rows by default. Server-enforced to closed-only leads
+// (hide_closed_lead itself rejects non-closed rows) even though the button is only
+// rendered for closed rows client-side.
+export async function hideLeadAction(requestId: string): Promise<ActionResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  const { error } = await supabase.rpc('hide_closed_lead', { p_request_id: requestId })
+  if (error) return { success: false, error: error.message, errorCode: 'HIDE_FAILED' }
+
+  revalidatePath(`/admin/leads/${requestId}`)
+  revalidatePath('/admin/leads')
+  return { success: true }
+}
+
 export interface RevealedContact {
   contact: string
 }

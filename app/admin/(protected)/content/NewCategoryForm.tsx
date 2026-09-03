@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createCategoryAction } from './actions'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 
 export function NewCategoryForm({ nextSortOrder }: { nextSortOrder: number }) {
   const router = useRouter()
@@ -42,7 +42,7 @@ export function NewCategoryForm({ nextSortOrder }: { nextSortOrder: number }) {
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={primaryButtonClass}>
+      <button type="button" onClick={() => setOpen(true)} className={adminButtonPrimaryClass}>
         + 새 카테고리 추가
       </button>
     )
@@ -52,36 +52,36 @@ export function NewCategoryForm({ nextSortOrder }: { nextSortOrder: number }) {
     <form onSubmit={handleSubmit} className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="코드 (예: manufacturing)"
           value={code}
           onChange={(e) => setCode(e.target.value)}
           required
         />
-        <input className={inputClass} placeholder="영문명" value={name} onChange={(e) => setName(e.target.value)} required />
+        <input className={adminInputClass} placeholder="영문명" value={name} onChange={(e) => setName(e.target.value)} required />
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="키워드 (쉼표로 구분)"
           value={keywords}
           onChange={(e) => setKeywords(e.target.value)}
         />
         <input
           type="number"
-          className={inputClass}
+          className={adminInputClass}
           placeholder="정렬순서"
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
       </div>
-      <p className="mt-2 text-label-caption text-neutral-500">
+      <p className="mt-2 admin-label-sm text-neutral-500">
         생성 후 상태는 초안(draft)으로 시작합니다. 목록에서 편집을 눌러 다른 언어 번역과 게시 상태를 관리하세요.
       </p>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="submit" disabled={saving} className={primaryButtonClass}>
+        <button type="submit" disabled={saving} className={adminButtonPrimaryClass}>
           추가
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-body-sm text-neutral-500 hover:underline">
+        <button type="button" onClick={() => setOpen(false)} className="admin-body-sm text-neutral-500 hover:underline">
           취소
         </button>
       </div>

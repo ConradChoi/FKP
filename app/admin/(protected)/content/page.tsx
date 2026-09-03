@@ -77,14 +77,13 @@ export default async function ContentManagementPage() {
   ).filter((item) => item.contentItemId)
 
   return (
-    <div className="mx-auto max-w-[1000px]">
-      <h1 className="text-h3 text-primary-900">콘텐츠관리</h1>
-      <p className="mt-1 text-body-sm text-neutral-600">
+    <div>
+      <p className="mt-1 admin-body-sm text-neutral-600">
         카테고리 마스터 데이터와 랜딩페이지 마케팅 카피를 관리합니다. 게시(published) 상태인 내용은 최대 1분(ISR) 이내
         공개 사이트에 반영됩니다. 블로그/사례/FAQ는 좌측 게시판관리 메뉴로 이동했습니다.
       </p>
 
-      {error && <p className="mt-4 text-body-sm text-error">불러오지 못했습니다: {error.message}</p>}
+      {error && <p className="mt-4 admin-body-sm text-error">불러오지 못했습니다: {error.message}</p>}
 
       <ContentTabs
         tabs={[
@@ -109,7 +108,7 @@ export default async function ContentManagementPage() {
               <div className="space-y-6">
                 {LANDING_COPY_SECTIONS.map((section) => (
                   <div key={section.label}>
-                    <h2 className="text-body-sm font-semibold text-neutral-500">{section.label}</h2>
+                    <h2 className="admin-label-sm uppercase tracking-wide text-neutral-500">{section.label}</h2>
                     <div className="mt-2 space-y-2">
                       {landingCopyItems
                         .filter((item) => section.keys.includes(item.contentKey))

@@ -56,9 +56,8 @@ export default async function AdminHomePage() {
   const byLocale = countBy('locale')
 
   return (
-    <div className="mx-auto max-w-[960px]">
-      <h1 className="text-h3 text-primary-900">대시보드</h1>
-      {error && <p className="mt-4 text-body-sm text-error">지표를 불러오지 못했습니다: {error.message}</p>}
+    <div>
+      {error && <p className="admin-body-sm text-error">지표를 불러오지 못했습니다: {error.message}</p>}
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="전체 리드" value={total} />
@@ -69,7 +68,7 @@ export default async function AdminHomePage() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <section className="rounded-card border border-neutral-200 bg-neutral-0 p-6">
-          <h2 className="text-h4 text-neutral-900">상태별 분포</h2>
+          <h2 className="admin-heading-3 text-neutral-900">상태별 분포</h2>
           <div className="mt-4 flex flex-col gap-2">
             {STATUS_ORDER.map((s) => (
               <DistributionBar key={s} label={STATUS_LABELS[s]} count={byStatus.get(s) ?? 0} total={total} />
@@ -78,7 +77,7 @@ export default async function AdminHomePage() {
         </section>
 
         <section className="rounded-card border border-neutral-200 bg-neutral-0 p-6">
-          <h2 className="text-h4 text-neutral-900">카테고리별 분포</h2>
+          <h2 className="admin-heading-3 text-neutral-900">카테고리별 분포</h2>
           <div className="mt-4 flex flex-col gap-2">
             {[...byCategory.entries()].map(([cat, count]) => (
               <DistributionBar key={cat} label={label(CATEGORY_LABELS, cat)} count={count} total={total} />
@@ -87,7 +86,7 @@ export default async function AdminHomePage() {
         </section>
 
         <section className="rounded-card border border-neutral-200 bg-neutral-0 p-6 sm:col-span-2">
-          <h2 className="text-h4 text-neutral-900">언어(locale)별 분포</h2>
+          <h2 className="admin-heading-3 text-neutral-900">언어(locale)별 분포</h2>
           <div className="mt-4 flex flex-col gap-2">
             {[...byLocale.entries()].map(([loc, count]) => (
               <DistributionBar key={loc} label={LOCALE_LABELS[loc] ?? loc} count={count} total={total} />
@@ -101,16 +100,16 @@ export default async function AdminHomePage() {
           href="/admin/leads"
           className="rounded-card border border-neutral-200 bg-neutral-0 p-6 transition-colors hover:border-primary-300"
         >
-          <h2 className="text-h4 text-neutral-900">요청관리</h2>
-          <p className="mt-2 text-body-sm text-neutral-600">리드 목록을 조회하고 상태/담당자를 관리합니다.</p>
+          <h2 className="admin-heading-3 text-neutral-900">요청관리</h2>
+          <p className="mt-2 admin-body-sm text-neutral-600">리드 목록을 조회하고 상태/담당자를 관리합니다.</p>
         </Link>
         {context.is_super_admin && (
           <Link
             href="/admin/access-requests"
             className="rounded-card border border-neutral-200 bg-neutral-0 p-6 transition-colors hover:border-primary-300"
           >
-            <h2 className="text-h4 text-neutral-900">가입 요청 검토</h2>
-            <p className="mt-2 text-body-sm text-neutral-600">신규 운영자 가입 요청을 승인/거부합니다.</p>
+            <h2 className="admin-heading-3 text-neutral-900">가입 요청 검토</h2>
+            <p className="mt-2 admin-body-sm text-neutral-600">신규 운영자 가입 요청을 승인/거부합니다.</p>
           </Link>
         )}
       </div>
@@ -121,8 +120,8 @@ export default async function AdminHomePage() {
 function StatCard({ label: statLabel, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
     <div className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
-      <p className="text-label-caption text-neutral-500">{statLabel}</p>
-      <p className={`mt-1 text-h3 ${accent ? 'text-error' : 'text-neutral-900'}`}>{value}</p>
+      <p className="admin-label-sm uppercase tracking-wide text-neutral-500">{statLabel}</p>
+      <p className={`mt-1 admin-display-3 ${accent ? 'text-error' : 'text-neutral-900'}`}>{value}</p>
     </div>
   )
 }

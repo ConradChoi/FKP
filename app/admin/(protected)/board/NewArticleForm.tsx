@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createArticleAction } from './actions'
 import type { ArticleContentType } from '@/lib/content/contentTypes'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 
 export function NewArticleForm({ contentType, nextSortOrder }: { contentType: ArticleContentType; nextSortOrder: number }) {
   const router = useRouter()
@@ -37,7 +37,7 @@ export function NewArticleForm({ contentType, nextSortOrder }: { contentType: Ar
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className={primaryButtonClass}>
+      <button type="button" onClick={() => setOpen(true)} className={adminButtonPrimaryClass}>
         + 새 글 추가
       </button>
     )
@@ -47,7 +47,7 @@ export function NewArticleForm({ contentType, nextSortOrder }: { contentType: Ar
     <form onSubmit={handleSubmit} className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
       <div className="grid grid-cols-2 gap-3">
         <input
-          className={inputClass}
+          className={adminInputClass}
           placeholder="슬러그 (예: launching-in-japan, 생성 후 수정 불가)"
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
@@ -55,34 +55,34 @@ export function NewArticleForm({ contentType, nextSortOrder }: { contentType: Ar
         />
         <input
           type="number"
-          className={inputClass}
+          className={adminInputClass}
           placeholder="정렬순서"
           value={sortOrder}
           onChange={(e) => setSortOrder(Number(e.target.value))}
         />
       </div>
-      <input className={`${inputClass} mt-3 w-full`} placeholder="영문 제목" value={title} onChange={(e) => setTitle(e.target.value)} required />
+      <input className={`${adminInputClass} mt-3 w-full`} placeholder="영문 제목" value={title} onChange={(e) => setTitle(e.target.value)} required />
       <textarea
-        className={`${inputClass} mt-3 min-h-[56px] w-full`}
+        className={`${adminInputClass} mt-3 min-h-[56px] w-full`}
         placeholder="영문 요약 (150자 내외 권장)"
         value={excerpt}
         onChange={(e) => setExcerpt(e.target.value)}
       />
       <textarea
-        className={`${inputClass} mt-3 min-h-[200px] w-full font-mono text-body-sm`}
+        className={`${adminInputClass} mt-3 min-h-[200px] w-full font-mono admin-body-sm`}
         placeholder="영문 본문 (마크다운: #/## 제목, **굵게**, - 목록, 1. 번호목록, |표|, [링크](url))"
         value={bodyMarkdown}
         onChange={(e) => setBodyMarkdown(e.target.value)}
       />
-      <p className="mt-2 text-label-caption text-neutral-500">
+      <p className="mt-2 admin-label-sm text-neutral-500">
         생성 후 상태는 초안(draft)으로 시작합니다. 목록에서 편집을 눌러 게시 상태와 다른 언어 번역을 관리하세요.
       </p>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="submit" disabled={saving} className={primaryButtonClass}>
+        <button type="submit" disabled={saving} className={adminButtonPrimaryClass}>
           추가
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="text-body-sm text-neutral-500 hover:underline">
+        <button type="button" onClick={() => setOpen(false)} className="admin-body-sm text-neutral-500 hover:underline">
           취소
         </button>
       </div>

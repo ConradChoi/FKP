@@ -72,8 +72,8 @@ export function PermissionMatrix({
             key={r.id}
             type="button"
             onClick={() => setActiveRoleId(r.id)}
-            className={`px-4 py-2 text-body-sm font-medium ${
-              r.id === activeRoleId ? 'border-b-2 border-primary-600 text-primary-600' : 'text-neutral-500'
+            className={`border-b-2 px-4 py-2 admin-body-sm font-medium transition-colors ${
+              r.id === activeRoleId ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
           >
             {r.display_name}
@@ -82,18 +82,18 @@ export function PermissionMatrix({
       </div>
 
       {isSuperAdmin && (
-        <p className="mt-3 text-body-sm text-neutral-500">
+        <p className="mt-3 admin-body-sm text-neutral-500">
           super_admin은 이 매트릭스와 무관하게 항상 전체 권한을 가집니다 (읽기 전용으로 표시).
         </p>
       )}
 
       <div className="mt-4 overflow-x-auto rounded-card border border-neutral-200 bg-neutral-0">
-        <table className="w-full text-body-sm">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
-              <th className="px-4 py-3 font-medium">메뉴</th>
+            <tr className="border-b border-neutral-200 text-left">
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">메뉴</th>
               {FLAGS.map((f) => (
-                <th key={f.key} className="px-4 py-3 text-center font-medium">
+                <th key={f.key} className="px-4 py-3 text-center admin-body-sm font-medium uppercase tracking-wide text-neutral-500">
                   {f.label}
                 </th>
               ))}
@@ -102,9 +102,9 @@ export function PermissionMatrix({
           <tbody>
             {flatMenus.map(({ node, depth }) => (
               <tr key={node.id} className="border-b border-neutral-100 last:border-0">
-                <td className="px-4 py-2" style={{ paddingLeft: `${16 + depth * 20}px` }}>
+                <td className="px-4 py-2 admin-body" style={{ paddingLeft: `${16 + depth * 20}px` }}>
                   {node.display_name}
-                  {node.menu_type === 'group' && <span className="ml-1 text-label-caption text-neutral-400">(그룹)</span>}
+                  {node.menu_type === 'group' && <span className="ml-1 admin-label-sm text-neutral-400">(그룹)</span>}
                 </td>
                 {FLAGS.map((f) => {
                   const key = `${node.id}:${f.key}`

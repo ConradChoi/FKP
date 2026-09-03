@@ -12,6 +12,65 @@ import type { NextRequest } from 'next/server'
 
 const ADMIN_PUBLIC_PATHS = new Set(['/admin/login', '/admin/mfa-setup', '/admin/mfa-challenge'])
 
+// Design Ref: partner-supplier-app.screen-spec.md §1.4 — session cookie namespace kept
+// separate from /admin (see lib/supabase/supplierBrowserClient.ts's SUPPLIER_AUTH_COOKIE_NAME).
+// Only the "signed in at all" check happens here (matching guardAdmin's session-only scope);
+// the deeper partner_account status / email-verification checks happen in
+// app/supplier/profile/layout.tsx, the same division of labor admin uses (middleware = session,
+// protected layout = business-rule gate via a DB round trip).
+const SUPPLIER_AUTH_COOKIE_NAME = 'sb-supplier-auth'
+
+async function guardSupplier(request: NextRequest): Promise<NextResponse> {
+  let response = NextResponse.next({ request })
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
+  const pathname = request.nextUrl.pathname
+  const isProtectedPath = pathname.startsWith('/supplier/profile')
+
+  if (!url || !key) {
+    if (isProtectedPath) {
+      return NextResponse.redirect(new URL('/supplier/login', request.url))
+    }
+    return response
+  }
+
+  const supabase = createServerClient(url, key, {
+    cookieOptions: { name: SUPPLIER_AUTH_COOKIE_NAME },
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        response = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+      },
+    },
+  })
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    if (isProtectedPath) return NextResponse.redirect(new URL('/supplier/login', request.url))
+    return response
+  }
+
+  // Signed in — bounce away from the auth-only screens (login/signup/etc.) back to the
+  // profile shell. SUP-05/06/07 (auth.confirm / reset-password) are intentionally excluded
+  // from this bounce even though they're in SUPPLIER_PUBLIC_PATHS, because a signed-in user
+  // can legitimately land on reset-password mid-flow (screen-spec §3.7) — but they aren't
+  // reachable without a fresh recovery-token session anyway, so no special-case is needed
+  // here: only /supplier/login and /supplier/signup make sense to bounce away from.
+  if (pathname === '/supplier/login' || pathname === '/supplier/signup') {
+    return NextResponse.redirect(new URL('/supplier/profile', request.url))
+  }
+
+  return response
+}
+
 async function guardAdmin(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request })
 
@@ -88,9 +147,16 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  if (request.nextUrl.pathname.startsWith('/supplier')) {
+    const response = await guardSupplier(request)
+    // Same reasoning as the admin branch above — partner profile pages carry PII too.
+    response.headers.set('Cache-Control', 'no-store')
+    return response
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: ['/', '/admin/:path*', '/supplier/:path*'],
 }

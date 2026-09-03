@@ -19,7 +19,7 @@ export function ContentTabs({ tabs }: { tabs: Tab[] }) {
             key={tab.key}
             type="button"
             onClick={() => setActiveKey(tab.key)}
-            className={`px-4 py-2 text-body-sm font-medium ${
+            className={`px-4 py-2 admin-body-sm font-medium ${
               tab.key === activeKey ? 'border-b-2 border-primary-600 text-primary-600' : 'text-neutral-500'
             }`}
           >

@@ -17,6 +17,11 @@ interface ConfirmSubmitModalProps {
   formData: RequestFormState
   onConfirm: () => void
   onCancel: () => void
+  // Design Ref: partner-supplier-app.ui-spec.md §3.12/§9 — SUP-14's withdrawal modal reuses
+  // this component's structure but needs the confirm button styled as a destructive action
+  // (destructiveButtonClass) instead of the default primaryButtonClass. Optional so every
+  // existing caller (the buyer request flow) is unaffected.
+  confirmButtonClassName?: string
 }
 
 interface SummaryRow {
@@ -37,6 +42,7 @@ export function ConfirmSubmitModal({
   formData,
   onConfirm,
   onCancel,
+  confirmButtonClassName,
 }: ConfirmSubmitModalProps) {
   const titleRef = useRef<HTMLHeadingElement>(null)
   const isLoading = status === 'loading'

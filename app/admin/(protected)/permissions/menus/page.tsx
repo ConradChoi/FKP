@@ -35,26 +35,27 @@ export default async function MenusPage() {
   const parentOptions = (menus ?? []).filter((m) => m.menu_type === 'group')
 
   return (
-    <div className="mx-auto max-w-[900px]">
-      <h1 className="text-h3 text-primary-900">메뉴관리</h1>
-      <p className="mt-1 text-body-sm text-neutral-600">
+    <div>
+      <p className="admin-body-sm text-neutral-600">
         여기서 관리하는 메뉴가 사이드바 내비게이션과 접근 권한 판정의 기준입니다.
       </p>
 
-      {error && <p className="mt-4 text-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
+      {error && <p className="mt-4 admin-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
 
-      <NewMenuForm parentOptions={parentOptions} />
+      <div className="mt-4">
+        <NewMenuForm parentOptions={parentOptions} />
+      </div>
 
       <div className="mt-6 overflow-x-auto rounded-card border border-neutral-200 bg-neutral-0">
-        <table className="w-full text-body-sm">
+        <table className="w-full">
           <thead>
-            <tr className="border-b border-neutral-200 text-left text-neutral-500">
-              <th className="px-4 py-3 font-medium">표시명</th>
-              <th className="px-4 py-3 font-medium">코드</th>
-              <th className="px-4 py-3 font-medium">경로</th>
-              <th className="px-4 py-3 font-medium">정렬</th>
-              <th className="px-4 py-3 font-medium">노출</th>
-              <th className="px-4 py-3 font-medium">삭제</th>
+            <tr className="border-b border-neutral-200 text-left">
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">표시명</th>
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">코드</th>
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">경로</th>
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">정렬</th>
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">노출</th>
+              <th className="px-4 py-3 admin-body-sm font-medium uppercase tracking-wide text-neutral-500">삭제</th>
             </tr>
           </thead>
           <tbody>

@@ -21,14 +21,13 @@ export default async function AccessRequestsPage() {
     .order('created_at', { ascending: true })
 
   return (
-    <div className="mx-auto max-w-[800px]">
-      <h1 className="text-h3 text-primary-900">가입 요청 검토</h1>
-      <p className="mt-1 text-body-sm text-neutral-600">대기 중인 요청 {requests?.length ?? 0}건</p>
+    <div>
+      <p className="admin-body-sm text-neutral-600">대기 중인 요청 {requests?.length ?? 0}건</p>
 
-      {error && <p className="mt-6 text-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
+      {error && <p className="mt-6 admin-body-sm text-error">목록을 불러오지 못했습니다: {error.message}</p>}
 
       {!error && (requests?.length ?? 0) === 0 && (
-        <p className="mt-6 text-body-sm text-neutral-500">대기 중인 요청이 없습니다.</p>
+        <p className="mt-6 admin-body-sm text-neutral-500">대기 중인 요청이 없습니다.</p>
       )}
 
       <div className="mt-6 flex flex-col gap-4">

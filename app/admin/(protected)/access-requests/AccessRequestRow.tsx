@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { primaryButtonClass, secondaryButtonClass, inputClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminButtonPrimaryClass, adminButtonSecondaryClass, adminInputClass } from '@/components/admin/styles'
 
 interface Request {
   id: string
@@ -66,46 +66,46 @@ export function AccessRequestRow({ request }: { request: Request }) {
           <p className="font-medium text-neutral-900">
             {request.name} <span className="font-normal text-neutral-500">({request.email})</span>
           </p>
-          <p className="mt-1 text-body-sm text-neutral-600">{request.reason}</p>
-          <p className="mt-1 text-label-caption text-neutral-400">
+          <p className="mt-1 admin-body-sm text-neutral-600">{request.reason}</p>
+          <p className="mt-1 admin-label-sm text-neutral-400">
             {new Date(request.created_at).toLocaleString('ko-KR')}
           </p>
         </div>
       </div>
 
-      {error && <p className={`mt-3 ${errorTextClass}`}>{error}</p>}
+      {error && <p className="mt-3 admin-label-sm text-error">{error}</p>}
 
       {!rejecting ? (
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <select
-            className={inputClass}
+            className={adminInputClass}
             value={role}
             onChange={(e) => setRole(e.target.value as 'operator' | 'viewer')}
           >
             <option value="viewer">조회전용(viewer)</option>
             <option value="operator">운영자(operator)</option>
           </select>
-          <button type="button" onClick={approve} disabled={busy} className={primaryButtonClass}>
+          <button type="button" onClick={approve} disabled={busy} className={adminButtonPrimaryClass}>
             승인
           </button>
-          <button type="button" onClick={() => setRejecting(true)} disabled={busy} className={secondaryButtonClass}>
+          <button type="button" onClick={() => setRejecting(true)} disabled={busy} className={adminButtonSecondaryClass}>
             거부
           </button>
         </div>
       ) : (
         <div className="mt-4 flex flex-col gap-3">
           <textarea
-            className={inputClass}
+            className={adminInputClass}
             rows={2}
             placeholder="거부 사유"
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
           />
           <div className="flex gap-3">
-            <button type="button" onClick={reject} disabled={busy} className={primaryButtonClass}>
+            <button type="button" onClick={reject} disabled={busy} className={adminButtonPrimaryClass}>
               거부 확정
             </button>
-            <button type="button" onClick={() => setRejecting(false)} disabled={busy} className={secondaryButtonClass}>
+            <button type="button" onClick={() => setRejecting(false)} disabled={busy} className={adminButtonSecondaryClass}>
               취소
             </button>
           </div>

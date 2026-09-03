@@ -4,7 +4,7 @@ export function DistributionBar({ label, count, total }: { label: string; count:
   const pct = total > 0 ? Math.round((count / total) * 100) : 0
   return (
     <div>
-      <div className="flex items-center justify-between text-body-sm">
+      <div className="flex items-center justify-between admin-body-sm">
         <span className="text-neutral-700">{label}</span>
         <span className="text-neutral-500">
           {count}건 ({pct}%)

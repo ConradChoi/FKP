@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" className={inter.variable}>
-      <body className="font-sans">{children}</body>
+      <body className="font-admin-sans">{children}</body>
     </html>
   )
 }

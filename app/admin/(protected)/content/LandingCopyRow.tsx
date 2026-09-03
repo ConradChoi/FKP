@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { upsertContentTranslationAction } from './actions'
 import { computeTranslationBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
-import { errorTextClass, inputClass } from '@/components/RequestForm/styles'
+import { adminInputClass } from '@/components/admin/styles'
 
 export interface ContentTextTranslationRow extends TranslationRow {
   text: string
@@ -29,7 +29,7 @@ const STATUS_OPTIONS: { value: 'draft' | 'translated' | 'published'; label: stri
 ]
 
 function Badge({ label, tone }: { label: string; tone: keyof typeof TONE_CLASS }) {
-  return <span className={`rounded-full px-2 py-1 text-label-caption ${TONE_CLASS[tone]}`}>{label}</span>
+  return <span className={`rounded-full px-2 py-1 admin-label-sm ${TONE_CLASS[tone]}`}>{label}</span>
 }
 
 function TextEditor({
@@ -72,12 +72,12 @@ function TextEditor({
   return (
     <div className="rounded-card border border-neutral-200 p-4">
       <div className="flex items-center justify-between">
-        <p className="text-body-sm font-medium text-neutral-900">{label}</p>
+        <p className="admin-body-sm font-medium text-neutral-900">{label}</p>
         <Badge label={badge.label} tone={badge.tone} />
       </div>
-      <textarea className={`${inputClass} mt-3 min-h-[72px]`} value={text} onChange={(e) => setText(e.target.value)} />
+      <textarea className={`${adminInputClass} mt-3 min-h-[72px]`} value={text} onChange={(e) => setText(e.target.value)} />
       <select
-        className={`${inputClass} mt-2`}
+        className={`${adminInputClass} mt-2`}
         value={status}
         onChange={(e) => setStatus(e.target.value as typeof status)}
       >
@@ -87,12 +87,12 @@ function TextEditor({
           </option>
         ))}
       </select>
-      {error && <p className={`mt-2 ${errorTextClass}`}>{error}</p>}
+      {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <button
         type="button"
         onClick={save}
         disabled={saving || !text}
-        className="mt-3 rounded-input bg-primary-600 px-4 py-2 text-label-caption text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+        className="mt-3 rounded-input bg-primary-600 px-4 py-2 admin-label-sm text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
       >
         저장
       </button>
@@ -107,10 +107,10 @@ export function LandingCopyRow({ item }: { item: LandingCopyItem }) {
   return (
     <div className="rounded-card border border-neutral-200 bg-neutral-0">
       <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-        <button type="button" onClick={() => setExpanded((v) => !v)} className="text-body-sm text-primary-600 hover:underline">
+        <button type="button" onClick={() => setExpanded((v) => !v)} className="admin-body-sm text-primary-600 hover:underline">
           {expanded ? '접기' : '편집'}
         </button>
-        <span className="text-body-sm text-neutral-900">{item.label}</span>
+        <span className="admin-body-sm text-neutral-900">{item.label}</span>
         <div className="ml-auto flex gap-2">
           {LOCALES.map(({ key, isSource }) => {
             const badge = computeTranslationBadge({ isSource, row: item.translations[key] ?? null, sourceUpdatedAt })

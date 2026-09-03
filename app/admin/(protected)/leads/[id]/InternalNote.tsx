@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { updateInternalNoteAction } from './actions'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 
 export function InternalNote({ requestId, initialNote }: { requestId: string; initialNote: string }) {
   const [note, setNote] = useState(initialNote)
@@ -27,18 +27,18 @@ export function InternalNote({ requestId, initialNote }: { requestId: string; in
   return (
     <div className="mt-4">
       <textarea
-        className={`${inputClass} w-full`}
+        className={`${adminInputClass} w-full`}
         rows={4}
         maxLength={5000}
         value={note}
         onChange={(e) => setNote(e.target.value)}
       />
       <div className="mt-2 flex items-center gap-3">
-        <button type="button" onClick={handleSave} disabled={saving} className={primaryButtonClass}>
+        <button type="button" onClick={handleSave} disabled={saving} className={adminButtonPrimaryClass}>
           {saving ? '저장 중...' : '메모 저장'}
         </button>
-        {saved && <span className="text-body-sm text-primary-600">저장됨</span>}
-        {error && <span className={errorTextClass}>{error}</span>}
+        {saved && <span className="admin-body-sm text-primary-600">저장됨</span>}
+        {error && <span className="admin-label-sm text-error">{error}</span>}
       </div>
     </div>
   )

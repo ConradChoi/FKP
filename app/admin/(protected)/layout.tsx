@@ -7,8 +7,7 @@ import { redirect } from 'next/navigation'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
 import { buildMenuTree } from '@/lib/admin/menuTree'
 import { AdminSidebar } from './AdminSidebar'
-import { SignOutButton } from './SignOutButton'
-import { NotificationBell } from './NotificationBell'
+import { AdminTopbar } from './AdminTopbar'
 
 export interface MenuRow {
   id: string
@@ -40,17 +39,14 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
 
   return (
     <div className="flex min-h-screen bg-neutral-50">
-      <AdminSidebar menuTree={menuTree} />
+      <AdminSidebar menuTree={menuTree} displayName={context.display_name} />
       <div className="flex-1">
-        <header className="flex items-center justify-end border-b border-neutral-200 bg-neutral-0 px-6 py-3">
-          <div className="flex items-center gap-3">
-            <p className="text-body-sm text-neutral-600">
-              {context.display_name}님 ({(context.role_codes as string[])?.join(', ')})
-            </p>
-            <NotificationBell pendingAccessRequests={pendingAccessRequests ?? 0} />
-            <SignOutButton />
-          </div>
-        </header>
+        <AdminTopbar
+          menuTree={menuTree}
+          displayName={context.display_name}
+          roleCodes={(context.role_codes as string[]) ?? []}
+          pendingAccessRequests={pendingAccessRequests ?? 0}
+        />
         <main className="p-6">{children}</main>
       </div>
     </div>

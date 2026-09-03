@@ -13,6 +13,19 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export const STATUS_ORDER = ['new', 'reviewing', 'matching', 'matched', 'on_hold', 'closed'] as const
 
+// Design Ref: components/admin/StatusBadge.tsx — maps each lead status to the shared badge
+// tone palette. 'matching' reads as amber/in-progress (echoes the amber
+// ProgressBar "in-progress" tone), 'on_hold'/'closed' both read neutral/muted since neither is
+// an error state, just an inactive one.
+export const STATUS_TONE: Record<(typeof STATUS_ORDER)[number], 'neutral' | 'info' | 'warning' | 'success' | 'error'> = {
+  new: 'info',
+  reviewing: 'neutral',
+  matching: 'warning',
+  matched: 'success',
+  on_hold: 'neutral',
+  closed: 'neutral',
+}
+
 export const CATEGORY_LABELS: Record<string, string> = {
   education: '교육 & 에듀테크',
   'it-ai': 'IT & AI',
