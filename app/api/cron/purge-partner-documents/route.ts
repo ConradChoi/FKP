@@ -44,6 +44,12 @@ function debugInfo(request: Request) {
     configuredTail: configured ? configured.slice(-4) : null,
     receivedLength: received.length,
     receivedTail: received ? received.slice(-4) : null,
+    // 2026-09-04: re-checking whether the 2026-08-27 Amplify SSR env-var-propagation bug
+    // (see git log 0e7410b) is still present in production — if serviceRoleKeyPresent is
+    // false here, every partner API route (documents/withdraw/check-brn/signup) is also
+    // currently broken in prod, not just this cron worker.
+    serviceRoleKeyPresent: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    supabaseUrlPresent: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
   }
 }
 
