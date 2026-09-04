@@ -22,9 +22,13 @@ import { getSupabaseAdminClient } from '@/lib/supabase/adminClient'
 const BATCH_LIMIT = 200
 
 function isAuthorized(request: Request): boolean {
-  const secret = process.env.PARTNER_DOC_PURGE_CRON_SECRET
+  // .trim() on both sides: console/CLI text fields for this value have repeatedly picked up
+  // invisible leading/trailing whitespace or a trailing newline from copy-paste in practice,
+  // which silently breaks the exact-string comparison below without any visible sign why.
+  const secret = process.env.PARTNER_DOC_PURGE_CRON_SECRET?.trim()
   if (!secret) return false // fail closed if the secret was never configured
-  return request.headers.get('authorization') === `Bearer ${secret}`
+  const header = request.headers.get('authorization')?.trim() ?? ''
+  return header === `Bearer ${secret}`
 }
 
 type PendingDocument = { document_id: string; partner_id: string; storage_path: string }
