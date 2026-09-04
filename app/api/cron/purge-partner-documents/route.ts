@@ -31,11 +31,27 @@ function isAuthorized(request: Request): boolean {
   return header === `Bearer ${secret}`
 }
 
+// TEMPORARY diagnostic for the 401 response — repeated Amplify/GitHub secret mismatches
+// with no visible cause. Reveals only lengths + last-4-chars (not enough to reconstruct
+// either secret) so we can tell, from the HTTP response alone, whether Amplify is even
+// reading a configured value at all vs. reading the wrong one. Remove once resolved.
+function debugInfo(request: Request) {
+  const configured = process.env.PARTNER_DOC_PURGE_CRON_SECRET
+  const header = request.headers.get('authorization') ?? ''
+  const received = header.startsWith('Bearer ') ? header.slice(7) : header
+  return {
+    configuredLength: configured?.length ?? 0,
+    configuredTail: configured ? configured.slice(-4) : null,
+    receivedLength: received.length,
+    receivedTail: received ? received.slice(-4) : null,
+  }
+}
+
 type PendingDocument = { document_id: string; partner_id: string; storage_path: string }
 
 export async function POST(request: Request) {
   if (!isAuthorized(request)) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'unauthorized', debug: debugInfo(request) }, { status: 401 })
   }
 
   const adminClient = getSupabaseAdminClient()
