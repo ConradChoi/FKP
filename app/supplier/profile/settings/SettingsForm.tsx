@@ -322,16 +322,13 @@ export function SettingsForm({
         onConfirm={handleWithdraw}
         onCancel={() => setWithdrawModalOpen(false)}
       >
-        {/* Design Ref: privacy review §5.3 확정 모달 문구 — the "첨부하신 증빙 문서가
-            삭제됩니다" line is DELIBERATELY OMITTED per backend-implementation-notes.md §4:
-            "파기 워커가 실제로 배포되어 동작을 확인한 뒤에만 화면에 추가할 것" (ceo-decisions.md
-            §4 조건 2) — that worker's Amplify/GitHub Actions secrets have not been confirmed
-            configured in this task, so it is treated as "not yet deployed". Add that line back
-            once deployment is verified. */}
+        {/* Design Ref: privacy review §5.3 확정 모달 문구. 파기 워커(app/api/cron/purge-partner-documents)
+            의 Amplify/GitHub Actions 시크릿 배포가 2026-09-05에 실제 200 응답으로 검증되어(ceo-decisions.md
+            §4 조건 2 충족), "첨부하신 증빙 문서가 삭제됩니다" 줄을 복원했다. */}
         <ul className="flex flex-col gap-1.5 text-body-sm text-neutral-700">
           <li>· 로그인 계정(이메일·비밀번호)이 즉시 삭제되며 복구할 수 없습니다.</li>
           <li>· SEEPN 공개 노출이 즉시 중단됩니다.</li>
-          <li>· 담당자 연락처가 즉시 삭제됩니다.</li>
+          <li>· 담당자 연락처와 첨부하신 증빙 문서가 삭제됩니다.</li>
           {businessEntityType === 'sole_proprietor' && <li>· 회사 정보(상호·사업자등록번호·소재지)가 삭제됩니다.</li>}
           {businessEntityType === 'corporation' && <li>· 회사 단위 정보와 매칭 이력은 통계 목적으로 남을 수 있습니다.</li>}
           <li>· 동의 기록(동의 시각·항목·버전)은 법령상 입증을 위해 별도로 보관되며, 접속 기록은 관련 법령에 따라 최대 2년간 보관됩니다.</li>
