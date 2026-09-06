@@ -90,6 +90,23 @@ export async function POST(request: Request) {
     email_confirm: false,
   })
 
+  // BUG FIX (2026-09-06): auth.admin.createUser() never sends any email by design (that's
+  // exactly why it was chosen here — server-controlled signup with rate-limit/honeypot checks
+  // before an account exists at all) — but nothing after it ever triggered the actual
+  // confirmation email either, so accounts were created permanently unconfirmable. resend()
+  // hits Supabase's standard /auth/v1/resend endpoint (same one SUP-04's "재발송" button uses)
+  // and works for an already-created-but-unconfirmed user regardless of "Allow new users to
+  // sign up" being OFF, since it isn't creating a user. Best-effort: a failure here must not
+  // change the response (still neutral-success either way, EDGE-1's enumeration defense), but
+  // IS logged since — unlike EDGE-1's "email already in use" case — this failure means a
+  // legitimate new user just got an unconfirmable account.
+  if (!createError && createdUser?.user) {
+    const { error: resendError } = await adminClient.auth.resend({ type: 'signup', email })
+    if (resendError) {
+      console.error(`partner.signup: confirmation email send failed for new user ${createdUser.user.id}: ${resendError.message}`)
+    }
+  }
+
   if (createError || !createdUser.user) {
     // EDGE-1/EDGE-4: "email already registered" (or an admin-principal collision surfacing the
     // same way) must look identical to success on the wire — no account-existence oracle.
