@@ -33,12 +33,30 @@ export async function GET() {
 
   const raw = cookieStore.get('sb-supplier-auth')?.value ?? ''
 
+  // Manual decode, entirely bypassing GoTrueClient/the @supabase/ssr storage adapter, to
+  // isolate whether the failure is in cookie decoding or in GoTrueClient's session recognition
+  // after a successful decode.
+  let manualDecode: { ok: boolean; error?: string; keys?: string[]; userId?: string } = { ok: false }
+  try {
+    if (raw.startsWith('base64-')) {
+      const b64 = raw.slice('base64-'.length)
+      const decoded = Buffer.from(b64, 'base64url').toString('utf-8')
+      const parsed = JSON.parse(decoded)
+      manualDecode = { ok: true, keys: Object.keys(parsed), userId: parsed?.user?.id }
+    } else {
+      manualDecode = { ok: false, error: 'no base64- prefix' }
+    }
+  } catch (e) {
+    manualDecode = { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
+
   return NextResponse.json({
     renderedAt: new Date().toISOString(),
     clientCreated: true,
     cookies: allCookies,
     rawCookiePrefix: raw.slice(0, 30),
     rawCookieSuffix: raw.slice(-30),
+    manualDecode,
     getSessionError: sessionError ? { message: sessionError.message, status: sessionError.status } : null,
     hasSession: !!sessionData.session,
     sessionUserId: sessionData.session?.user?.id ?? null,
