@@ -1,28 +1,36 @@
 // Design Ref: lib/supabase/serverAuthClient.ts (the /admin counterpart this mirrors) +
-// screen-spec §1.4 — same cookie-backed session client shape, but with the
-// `cookieOptions.name` override (matching lib/supabase/supplierBrowserClient.ts exactly)
-// so /supplier's session cookie never collides with /admin's default-named one. Uses the
-// anon key (never service_role) — the logged-in partner's own JWT plus RLS/private.*
-// functions decide what they can see, exactly like the admin server client.
-import { createServerClient } from '@supabase/ssr'
+// screen-spec §1.4 — same cookie-backed session shape, but with the `cookieOptions.name`
+// override (matching lib/supabase/supplierBrowserClient.ts exactly) so /supplier's session
+// cookie never collides with /admin's default-named one. Uses the anon key (never
+// service_role) — the logged-in partner's own JWT plus RLS/private.* functions decide what
+// they can see, exactly like the admin server client.
+import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { SUPPLIER_AUTH_COOKIE_NAME } from './supplierBrowserClient'
 
 const BASE64_COOKIE_PREFIX = 'base64-'
 
-// WORKAROUND (2026-09-06) — confirmed via production diagnostics that @supabase/ssr's own
-// automatic "read session from the cookie via storage.getItem()" path
-// (createServerClient -> GoTrueClient.getUser()/getSession() -> __loadSession() ->
-// getItemAsync(this.storage, this.storageKey)) reliably returns "Auth session missing!" on
-// this Amplify deployment even though the exact same cookie value, decoded by hand with the
-// exact same base64url+JSON.parse logic the library itself uses, parses to a perfectly valid
-// session (right access_token/refresh_token/user every time). Root cause not isolated further
-// (matches this project's cookie value/library version 1:1 in a local reproduction that DOES
-// succeed, so it is specific to this runtime, not a code/config mistake here) — rather than
-// keep chasing it, this bypasses the automatic path entirely: decode the cookie ourselves and
-// hand the tokens to `setSession()`, which performs its own real validation against Supabase
-// instead of trusting the storage-adapter's internal load.
+// WORKAROUND (2026-09-06/07) — root-caused via production stack traces: @supabase/ssr
+// 0.12.5's cookie storage adapter (createServerClient's `isServer: true` storage object,
+// dist/main/cookies.js) has a `setItem` that unconditionally calls `key.endsWith(...)`
+// without checking `key` is a string first. On this Amplify deployment's bundled build that
+// throws `TypeError: b.endsWith is not a function` — confirmed via a temporary diagnostic
+// route's captured stack trace pointing directly at that file/function — and GoTrueClient's
+// internal error handling swallows it into a generic "Auth session missing!" once the
+// surrounding save/load machinery touches that storage adapter at all (reads included, not
+// just writes — reproduced with getSession()/getUser() alone, before any explicit setSession
+// call). The exact same cookie value decodes and validates perfectly both by hand and via a
+// LOCAL reproduction using the identical library version, so this is a bug specific to how
+// this bundle executes on this platform, not a mistake in this app's config.
+//
+// Fix: stop routing through @supabase/ssr's cookie storage adapter for this client entirely.
+// Decode the session cookie ourselves (same base64url+JSON logic the library uses) and hand
+// the tokens to a *plain* `createClient()` instance (no custom `cookies`/`storage` option, so
+// GoTrueClient falls back to its own default in-memory storage — a completely different code
+// path from @supabase/ssr's buggy one). Verified locally that this combination works
+// end-to-end. This client is request-scoped and never persists anything back to cookies —
+// token refresh/persistence remains middleware.ts's job, unchanged.
 function decodeSupplierSessionCookie(raw: string | undefined): { access_token: string; refresh_token: string } | null {
   if (!raw || !raw.startsWith(BASE64_COOKIE_PREFIX)) return null
   try {
@@ -48,27 +56,12 @@ export async function getSupplierAuthServerClient(): Promise<SupabaseClient | nu
   }
 
   const cookieStore = await cookies()
+  const tokens = decodeSupplierSessionCookie(cookieStore.get(SUPPLIER_AUTH_COOKIE_NAME)?.value)
 
-  const supabase = createServerClient(url, key, {
-    cookieOptions: { name: SUPPLIER_AUTH_COOKIE_NAME },
-    cookies: {
-      getAll() {
-        return cookieStore.getAll()
-      },
-      setAll(cookiesToSet) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
-        } catch {
-          // Called from a Server Component render (not a Route Handler/Server Action) —
-          // cookies() is read-only there. Session refresh still happens in middleware.ts,
-          // so this is safe to swallow (standard @supabase/ssr guidance, same as the admin
-          // client this mirrors).
-        }
-      },
-    },
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   })
 
-  const tokens = decodeSupplierSessionCookie(cookieStore.get(SUPPLIER_AUTH_COOKIE_NAME)?.value)
   if (tokens) {
     // Best-effort: if this fails (e.g. genuinely expired/revoked), fall through and let the
     // caller's own getUser()/getSession() calls report the real (now consistent) unauthenticated
