@@ -7,6 +7,10 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSupplierAuthServerClient } from '@/lib/supabase/supplierServerAuthClient'
 
+// TEST: forcing dynamic to rule out this Route Handler being statically cached at build time
+// (which would explain identical "no session" results regardless of the request's cookie).
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll().map((c) => ({ name: c.name, length: c.value.length }))
@@ -30,6 +34,7 @@ export async function GET() {
   const raw = cookieStore.get('sb-supplier-auth')?.value ?? ''
 
   return NextResponse.json({
+    renderedAt: new Date().toISOString(),
     clientCreated: true,
     cookies: allCookies,
     rawCookiePrefix: raw.slice(0, 30),
