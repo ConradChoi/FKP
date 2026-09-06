@@ -50,8 +50,34 @@ export async function GET() {
     manualDecode = { ok: false, error: e instanceof Error ? e.message : String(e) }
   }
 
+  // Directly test setSession() here (not swallowed) to see whether the workaround itself
+  // succeeds or fails, and why.
+  let setSessionResult: { ok: boolean; error?: string; userId?: string } = { ok: false }
+  if (manualDecode.ok) {
+    try {
+      const b64 = raw.slice('base64-'.length)
+      const decoded = JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8'))
+      const { data: setData, error: setError } = await supabase.auth.setSession({
+        access_token: decoded.access_token,
+        refresh_token: decoded.refresh_token,
+      })
+      setSessionResult = setError
+        ? { ok: false, error: setError.message }
+        : { ok: true, userId: setData.session?.user?.id }
+    } catch (e) {
+      setSessionResult = { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  }
+
+  const { data: getUserAfterSetSession, error: getUserAfterSetSessionError } = await supabase.auth.getUser()
+
   return NextResponse.json({
     renderedAt: new Date().toISOString(),
+    setSessionResult,
+    getUserAfterSetSession: {
+      userId: getUserAfterSetSession.user?.id ?? null,
+      error: getUserAfterSetSessionError ? getUserAfterSetSessionError.message : null,
+    },
     clientCreated: true,
     cookies: allCookies,
     rawCookiePrefix: raw.slice(0, 30),
