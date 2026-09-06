@@ -52,7 +52,7 @@ export async function GET() {
 
   // Directly test setSession() here (not swallowed) to see whether the workaround itself
   // succeeds or fails, and why.
-  let setSessionResult: { ok: boolean; error?: string; userId?: string } = { ok: false }
+  let setSessionResult: { ok: boolean; error?: string; userId?: string; stack?: string } = { ok: false }
   if (manualDecode.ok) {
     try {
       const b64 = raw.slice('base64-'.length)
@@ -62,10 +62,14 @@ export async function GET() {
         refresh_token: decoded.refresh_token,
       })
       setSessionResult = setError
-        ? { ok: false, error: setError.message }
+        ? { ok: false, error: setError.message, stack: (setError as unknown as Error).stack?.split('\n').slice(0, 8).join(' | ') }
         : { ok: true, userId: setData.session?.user?.id }
     } catch (e) {
-      setSessionResult = { ok: false, error: e instanceof Error ? e.message : String(e) }
+      setSessionResult = {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+        stack: e instanceof Error ? e.stack?.split('\n').slice(0, 8).join(' | ') : undefined,
+      }
     }
   }
 
