@@ -16,6 +16,7 @@ export async function GET() {
     return NextResponse.json({ clientCreated: false, cookies: allCookies })
   }
 
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   const { data, error } = await supabase.auth.getUser()
 
   let accountResult: unknown = null
@@ -26,9 +27,16 @@ export async function GET() {
     accountError = accErr ? { message: accErr.message, code: accErr.code } : null
   }
 
+  const raw = cookieStore.get('sb-supplier-auth')?.value ?? ''
+
   return NextResponse.json({
     clientCreated: true,
     cookies: allCookies,
+    rawCookiePrefix: raw.slice(0, 30),
+    rawCookieSuffix: raw.slice(-30),
+    getSessionError: sessionError ? { message: sessionError.message, status: sessionError.status } : null,
+    hasSession: !!sessionData.session,
+    sessionUserId: sessionData.session?.user?.id ?? null,
     getUserError: error ? { message: error.message, status: error.status } : null,
     userId: data.user?.id ?? null,
     accountResult,
