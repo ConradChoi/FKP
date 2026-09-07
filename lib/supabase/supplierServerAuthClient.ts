@@ -7,7 +7,11 @@
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import type { SupabaseClient, User } from '@supabase/supabase-js'
-import { SUPPLIER_AUTH_COOKIE_NAME } from './supplierBrowserClient'
+// NOT from './supplierBrowserClient' — that file has a top-level 'use client' directive, so
+// server-side code importing it gets a client-reference stub instead of the real string (see
+// supplierAuthCookieName.ts's own comment for how this was diagnosed). This was the actual
+// root cause of every "session not found" symptom investigated in this file's other comments.
+import { SUPPLIER_AUTH_COOKIE_NAME } from './supplierAuthCookieName'
 
 const BASE64_COOKIE_PREFIX = 'base64-'
 

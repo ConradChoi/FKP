@@ -3,7 +3,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { getSupplierAuthServerClient, getSupplierUser } from '@/lib/supabase/supplierServerAuthClient'
-import { SUPPLIER_AUTH_COOKIE_NAME } from '@/lib/supabase/supplierBrowserClient'
+import { SUPPLIER_AUTH_COOKIE_NAME } from '@/lib/supabase/supplierAuthCookieName'
 
 export const dynamic = 'force-dynamic'
 

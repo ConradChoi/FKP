@@ -15,8 +15,13 @@
 
 import { createBrowserClient } from '@supabase/ssr'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { SUPPLIER_AUTH_COOKIE_NAME } from './supplierAuthCookieName'
 
-export const SUPPLIER_AUTH_COOKIE_NAME = 'sb-supplier-auth'
+// Re-exported for existing client-side importers — safe here since this file is only ever
+// imported from Client Components, which do get the real value across the 'use client'
+// boundary (the bug is one-directional: server importing client, not the reverse). Any
+// SERVER-side code must import the constant from './supplierAuthCookieName' directly instead.
+export { SUPPLIER_AUTH_COOKIE_NAME }
 
 let cachedClient: SupabaseClient | null = null
 
