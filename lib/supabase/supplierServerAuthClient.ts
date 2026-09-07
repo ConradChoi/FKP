@@ -6,31 +6,42 @@
 // they can see, exactly like the admin server client.
 import { createClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient, User } from '@supabase/supabase-js'
 import { SUPPLIER_AUTH_COOKIE_NAME } from './supplierBrowserClient'
 
 const BASE64_COOKIE_PREFIX = 'base64-'
 
-// WORKAROUND (2026-09-06/07) — root-caused via production stack traces: @supabase/ssr
-// 0.12.5's cookie storage adapter (createServerClient's `isServer: true` storage object,
-// dist/main/cookies.js) has a `setItem` that unconditionally calls `key.endsWith(...)`
-// without checking `key` is a string first. On this Amplify deployment's bundled build that
-// throws `TypeError: b.endsWith is not a function` — confirmed via a temporary diagnostic
-// route's captured stack trace pointing directly at that file/function — and GoTrueClient's
-// internal error handling swallows it into a generic "Auth session missing!" once the
-// surrounding save/load machinery touches that storage adapter at all (reads included, not
-// just writes — reproduced with getSession()/getUser() alone, before any explicit setSession
-// call). The exact same cookie value decodes and validates perfectly both by hand and via a
-// LOCAL reproduction using the identical library version, so this is a bug specific to how
-// this bundle executes on this platform, not a mistake in this app's config.
+// WORKAROUND (2026-09-06/07) — root-caused via production stack traces, then narrowed further
+// by direct experiment: @supabase/ssr 0.12.5's cookie storage adapter has a real bug
+// (`setItem` calls `key.endsWith(...)` without checking `key` is a string; throws
+// `TypeError: b.endsWith is not a function` on this deployment's bundle) — switching to a
+// plain `createClient()` (no @supabase/ssr, no cookie storage adapter) avoided that specific
+// crash, confirmed via a temporary diagnostic route. But GoTrueClient's own internal session
+// state (`setSession()` -> `getSession()`/`getUser()` no-arg) turned out to have a SEPARATE,
+// still-unexplained read-after-write gap on this deployment: `setSession()` reports success
+// with no error, yet an immediate `getUser()`/`getSession()` call on the very same client
+// object can still report "Auth session missing!" — reproduced repeatedly, including after
+// looping setSession()+getUser() confirmation up to 3 times with no improvement. Not
+// reproducible locally under the identical library versions and cookie value, so this is
+// specific to how this bundle executes on this platform's compute, not a mistake in this
+// app's config, and not simply "needs one retry."
 //
-// Fix: stop routing through @supabase/ssr's cookie storage adapter for this client entirely.
-// Decode the session cookie ourselves (same base64url+JSON logic the library uses) and hand
-// the tokens to a *plain* `createClient()` instance (no custom `cookies`/`storage` option, so
-// GoTrueClient falls back to its own default in-memory storage — a completely different code
-// path from @supabase/ssr's buggy one). Verified locally that this combination works
-// end-to-end. This client is request-scoped and never persists anything back to cookies —
-// token refresh/persistence remains middleware.ts's job, unchanged.
+// Fix: stop depending on GoTrueClient's internal session state entirely, for both validation
+// and data access:
+//   1. Decode the session cookie ourselves (same base64url+JSON logic the library uses).
+//   2. Build the client with the access token baked into `global.headers.Authorization`
+//      directly at construction — every REST/RPC call this client makes (`.from()`, `.rpc()`)
+//      carries that bearer token unconditionally, independent of GoTrueClient's session state,
+//      so RLS scoping works regardless of whether `setSession()`/`getSession()` are reliable.
+//   3. Validate the token via the explicit-JWT overload `getUser(accessToken)` — per
+//      @supabase/auth-js's own source, passing a JWT here takes a completely different code
+//      path (`_getUser(jwt)`) that skips `initializePromise`/`_useSession`/storage entirely and
+//      just makes a direct, stateless network call to `/auth/v1/user`. This is the one auth-js
+//      entry point that never touches the flaky internal state machinery at all.
+// This client never calls `setSession()`/persists anything back to cookies — token
+// refresh/persistence remains middleware.ts's job, unchanged. A caller needing "is there a
+// logged-in user" must use `getSupplierUser(supabase, accessToken)` below (or
+// `requireSupplierSession()`), not `supabase.auth.getUser()` with no argument.
 function decodeSupplierSessionCookie(raw: string | undefined): { access_token: string; refresh_token: string } | null {
   if (!raw || !raw.startsWith(BASE64_COOKIE_PREFIX)) return null
   try {
@@ -45,7 +56,12 @@ function decodeSupplierSessionCookie(raw: string | undefined): { access_token: s
   }
 }
 
-export async function getSupplierAuthServerClient(): Promise<SupabaseClient | null> {
+export interface SupplierAuthClient {
+  supabase: SupabaseClient
+  accessToken: string | null
+}
+
+export async function getSupplierAuthServerClient(): Promise<SupplierAuthClient | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   // TEMPORARY (2026-08-27) — see lib/supabase/serverClient.ts for why this reads
   // NEXT_PUBLIC_SUPABASE_ANON_KEY first (AWS Amplify SSR runtime env var propagation bug).
@@ -60,24 +76,17 @@ export async function getSupplierAuthServerClient(): Promise<SupabaseClient | nu
 
   const supabase = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: tokens ? { headers: { Authorization: `Bearer ${tokens.access_token}` } } : undefined,
   })
 
-  if (tokens) {
-    // Best-effort, verified rather than assumed: production testing showed setSession() can
-    // report success (no thrown error, no `.error`) while the session is STILL not visible to
-    // an immediate subsequent getUser()/getSession() call on the same client — an apparent
-    // read-after-write consistency gap in this deployment's bundle, not a simple "call
-    // failed" case (a retry gated on `.error` alone saw no effect, since there was no error to
-    // catch). So instead of trusting setSession()'s own success signal, re-call setSession()
-    // up to 3 total attempts and after each one CONFIRM via getUser() that the session is
-    // actually readable before returning the client — matching the exact pattern that was
-    // observed to reliably succeed (a second/third round-trip on the same client instance).
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await supabase.auth.setSession(tokens).catch(() => {})
-      const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
-      if (data.user) break
-    }
-  }
+  return { supabase, accessToken: tokens?.access_token ?? null }
+}
 
-  return supabase
+// Stateless validation — see the WORKAROUND note above for why this must be `getUser(jwt)`
+// and not `supabase.auth.getUser()`.
+export async function getSupplierUser(supabase: SupabaseClient, accessToken: string | null): Promise<User | null> {
+  if (!accessToken) return null
+  const { data, error } = await supabase.auth.getUser(accessToken)
+  if (error) return null
+  return data.user
 }

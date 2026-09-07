@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 // /supplier-scoped one — see the identical note in app/api/partner/documents/route.ts for why
 // (screen-spec §1.4 cookie-namespace separation; the admin client would never see a partner's
 // session cookie).
-import { getSupplierAuthServerClient } from '@/lib/supabase/supplierServerAuthClient'
+import { getSupplierAuthServerClient, getSupplierUser } from '@/lib/supabase/supplierServerAuthClient'
 import { getSupabaseAdminClient } from '@/lib/supabase/adminClient'
 
 // Effectively-permanent ban (~100 years) used only as the step-5 compensating
@@ -20,12 +20,11 @@ import { getSupabaseAdminClient } from '@/lib/supabase/adminClient'
 const COMPENSATING_BAN_DURATION = '876000h'
 
 export async function POST() {
-  const authClient = await getSupplierAuthServerClient()
-  if (!authClient) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const authResult = await getSupplierAuthServerClient()
+  if (!authResult) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const { supabase: authClient, accessToken } = authResult
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser()
+  const user = await getSupplierUser(authClient, accessToken)
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   // Resolve the caller's own ids server-side — never trust a client-supplied

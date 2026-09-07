@@ -6,7 +6,7 @@
 import { NextResponse } from 'next/server'
 // NOTE (frontend-developer, 2026-09-04): switched from the /admin server client to the
 // /supplier-scoped one — see the identical note in app/api/partner/documents/route.ts for why.
-import { getSupplierAuthServerClient } from '@/lib/supabase/supplierServerAuthClient'
+import { getSupplierAuthServerClient, getSupplierUser } from '@/lib/supabase/supplierServerAuthClient'
 import { getSupabaseAdminClient } from '@/lib/supabase/adminClient'
 import { isRateLimitedWindow } from '@/lib/forms/rateLimit'
 
@@ -15,12 +15,11 @@ const DAILY_WINDOW_MS = 24 * 60 * 60 * 1000
 const MAX_CHECKS_PER_DAY = 10 // privacy review §6.1 point 3: "1일 10회"
 
 export async function POST(request: Request) {
-  const authClient = await getSupplierAuthServerClient()
-  if (!authClient) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const authResult = await getSupplierAuthServerClient()
+  if (!authResult) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const { supabase: authClient, accessToken } = authResult
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser()
+  const user = await getSupplierUser(authClient, accessToken)
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   // SS-5/PR-12: must run after login + email verification. get_own_partner_id

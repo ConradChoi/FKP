@@ -17,7 +17,7 @@ import { NextResponse } from 'next/server'
 // same browser. Using the admin client here would make this route 401 on every legitimate
 // partner request (it would be looking for a cookie the partner's browser client never sets).
 // Fixed to use the /supplier-scoped server client below.
-import { getSupplierAuthServerClient } from '@/lib/supabase/supplierServerAuthClient'
+import { getSupplierAuthServerClient, getSupplierUser } from '@/lib/supabase/supplierServerAuthClient'
 import { getSupabaseAdminClient } from '@/lib/supabase/adminClient'
 import { detectDocumentMimeType, extensionForDocumentMimeType } from '@/lib/forms/fileSignature'
 
@@ -26,12 +26,11 @@ const MAX_PARTNER_TOTAL_BYTES = 50 * 1024 * 1024 // UI-R3
 const ALLOWED_DOC_TYPES = new Set(['business_registration_cert', 'portfolio', 'certification', 'other'])
 
 export async function POST(request: Request) {
-  const authClient = await getSupplierAuthServerClient()
-  if (!authClient) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const authResult = await getSupplierAuthServerClient()
+  if (!authResult) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const { supabase: authClient, accessToken } = authResult
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser()
+  const user = await getSupplierUser(authClient, accessToken)
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   // Step 1: session verification + partner_id from a SERVER-SIDE lookup —
@@ -142,12 +141,11 @@ export async function POST(request: Request) {
 // the two steps only ever leaves a harmless orphaned Storage object, never a dangling metadata
 // row pointing at nothing.
 export async function DELETE(request: Request) {
-  const authClient = await getSupplierAuthServerClient()
-  if (!authClient) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const authResult = await getSupplierAuthServerClient()
+  if (!authResult) return NextResponse.json({ error: 'service_unavailable' }, { status: 503 })
+  const { supabase: authClient, accessToken } = authResult
 
-  const {
-    data: { user },
-  } = await authClient.auth.getUser()
+  const user = await getSupplierUser(authClient, accessToken)
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
 
   const { data: ids, error: idsError } = await authClient.rpc('get_own_partner_id').single()

@@ -6,7 +6,7 @@
 // session at all", per its own comment).
 import { redirect } from 'next/navigation'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getSupplierAuthServerClient } from '@/lib/supabase/supplierServerAuthClient'
+import { getSupplierAuthServerClient, getSupplierUser } from '@/lib/supabase/supplierServerAuthClient'
 import type { PartnerAccount, PartnerProfile } from './types'
 
 export interface SupplierSession {
@@ -22,12 +22,11 @@ export interface SupplierSession {
 // account/partner rows aren't in a usable state — mirrors admin's protected layout redirecting
 // straight to /admin/login rather than rendering a partial page.
 export async function requireSupplierSession(): Promise<SupplierSession> {
-  const supabase = await getSupplierAuthServerClient()
-  if (!supabase) redirect('/supplier/login')
+  const authClient = await getSupplierAuthServerClient()
+  if (!authClient) redirect('/supplier/login')
+  const { supabase, accessToken } = authClient
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getSupplierUser(supabase, accessToken)
   if (!user) redirect('/supplier/login')
 
   const { data: account } = await supabase
