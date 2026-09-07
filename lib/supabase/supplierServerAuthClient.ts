@@ -63,17 +63,19 @@ export async function getSupplierAuthServerClient(): Promise<SupabaseClient | nu
   })
 
   if (tokens) {
-    // Best-effort, with one retry: production testing showed the very first setSession() call
-    // on a freshly-constructed client occasionally fails (observed as a swallowed error) while
-    // an identical immediate retry on the same client instance succeeds — consistent with a
-    // cold-start-style race in the client's internal setup rather than a real auth problem
-    // (the exact same tokens validate fine moments later). One retry is enough to observe this
-    // settle in every case seen so far; if a genuine failure occurs (e.g. actually
-    // expired/revoked), it will fail both times and the caller's own getUser()/getSession()
-    // calls will correctly report unauthenticated.
-    const first = await supabase.auth.setSession(tokens).catch((e) => ({ error: e }))
-    if (first?.error) {
+    // Best-effort, verified rather than assumed: production testing showed setSession() can
+    // report success (no thrown error, no `.error`) while the session is STILL not visible to
+    // an immediate subsequent getUser()/getSession() call on the same client — an apparent
+    // read-after-write consistency gap in this deployment's bundle, not a simple "call
+    // failed" case (a retry gated on `.error` alone saw no effect, since there was no error to
+    // catch). So instead of trusting setSession()'s own success signal, re-call setSession()
+    // up to 3 total attempts and after each one CONFIRM via getUser() that the session is
+    // actually readable before returning the client — matching the exact pattern that was
+    // observed to reliably succeed (a second/third round-trip on the same client instance).
+    for (let attempt = 0; attempt < 3; attempt += 1) {
       await supabase.auth.setSession(tokens).catch(() => {})
+      const { data } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+      if (data.user) break
     }
   }
 
