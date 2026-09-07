@@ -9,9 +9,16 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const cookieStore = await cookies()
-  const allCookies = cookieStore.getAll().map((c) => ({ name: c.name, length: c.value.length }))
+  const rawAll = cookieStore.getAll()
+  const allCookies = rawAll.map((c) => ({ name: c.name, length: c.value.length }))
   const directGet = cookieStore.get(SUPPLIER_AUTH_COOKIE_NAME)
   const directGetInfo = { found: !!directGet, valuePrefix: directGet?.value?.slice(0, 20) ?? null }
+  const nameCharCodes = rawAll.map((c) => ({ name: c.name, codes: Array.from(c.name).map((ch) => ch.charCodeAt(0)) }))
+  const constantCharCodes = Array.from(SUPPLIER_AUTH_COOKIE_NAME).map((ch) => ch.charCodeAt(0))
+  console.log('SUPPLIER_DEBUG constantCharCodes', JSON.stringify(constantCharCodes))
+  console.log('SUPPLIER_DEBUG nameCharCodes', JSON.stringify(nameCharCodes))
+  console.log('SUPPLIER_DEBUG directGetInfo', JSON.stringify(directGetInfo))
+  console.log('SUPPLIER_DEBUG allCookies', JSON.stringify(allCookies))
 
   const authResult = await getSupplierAuthServerClient()
   if (!authResult) {
@@ -33,6 +40,8 @@ export async function GET() {
     renderedAt: new Date().toISOString(),
     cookies: allCookies,
     directGetInfo,
+    nameCharCodes,
+    constantCharCodes,
     hasAccessToken: !!accessToken,
     accessTokenPrefix: accessToken?.slice(0, 15) ?? null,
     userId: user?.id ?? null,
