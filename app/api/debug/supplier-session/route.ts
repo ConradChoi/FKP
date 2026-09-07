@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   const cookieStore = await cookies()
   const allCookies = cookieStore.getAll().map((c) => ({ name: c.name, length: c.value.length }))
+  const directGet = cookieStore.get(SUPPLIER_AUTH_COOKIE_NAME)
+  const directGetInfo = { found: !!directGet, valuePrefix: directGet?.value?.slice(0, 20) ?? null }
 
   const authResult = await getSupplierAuthServerClient()
   if (!authResult) {
@@ -30,7 +32,9 @@ export async function GET() {
   return NextResponse.json({
     renderedAt: new Date().toISOString(),
     cookies: allCookies,
+    directGetInfo,
     hasAccessToken: !!accessToken,
+    accessTokenPrefix: accessToken?.slice(0, 15) ?? null,
     userId: user?.id ?? null,
     accountResult,
     accountError,
