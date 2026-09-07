@@ -63,10 +63,18 @@ export async function getSupplierAuthServerClient(): Promise<SupabaseClient | nu
   })
 
   if (tokens) {
-    // Best-effort: if this fails (e.g. genuinely expired/revoked), fall through and let the
-    // caller's own getUser()/getSession() calls report the real (now consistent) unauthenticated
-    // state, rather than throwing here.
-    await supabase.auth.setSession(tokens).catch(() => {})
+    // Best-effort, with one retry: production testing showed the very first setSession() call
+    // on a freshly-constructed client occasionally fails (observed as a swallowed error) while
+    // an identical immediate retry on the same client instance succeeds — consistent with a
+    // cold-start-style race in the client's internal setup rather than a real auth problem
+    // (the exact same tokens validate fine moments later). One retry is enough to observe this
+    // settle in every case seen so far; if a genuine failure occurs (e.g. actually
+    // expired/revoked), it will fail both times and the caller's own getUser()/getSession()
+    // calls will correctly report unauthenticated.
+    const first = await supabase.auth.setSession(tokens).catch((e) => ({ error: e }))
+    if (first?.error) {
+      await supabase.auth.setSession(tokens).catch(() => {})
+    }
   }
 
   return supabase
