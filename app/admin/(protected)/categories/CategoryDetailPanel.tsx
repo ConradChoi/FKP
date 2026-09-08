@@ -7,12 +7,30 @@
 // §3.3's "출처는 정책상 읽기전용"), ko/en/ja translations, sort order, and delete.
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { deleteCategoryAction, moveCategoryAction, upsertStandardCategoryTranslationAction } from './actions'
-import { computeTranslationBadge, TONE_CLASS } from '@/lib/admin/translationStatus'
+import {
+  deleteCategoryAction,
+  moveCategoryAction,
+  upsertStandardCategoryTranslationAction,
+  aiFillStandardCategoryTranslationAction,
+} from './actions'
+import { computeTranslationBadge, computeSourceBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
 import { adminInputClass, adminButtonDestructiveClass } from '@/components/admin/styles'
 import { StatusBadge } from '@/components/admin/StatusBadge'
+import { AiFillButton } from '@/components/admin/AiFillButton'
+import {
+  getAiFillDisabledReason,
+  getAiFillConfirmMessage,
+  getAiFillErrorMessage,
+  AI_REVIEW_SAVE_CONFIRM_MESSAGE,
+  AI_DRAFT_PUBLISH_GUARD_CAPTION,
+  AI_DRAFT_PUBLISH_SAVE_REJECTED_MESSAGE,
+  AI_FILL_STALE_SOURCE_CAPTION,
+} from '@/lib/admin/aiFillClient'
 import type { CategoryLocale, StandardCategoryRecord, TranslationStatus } from './page'
 import { getBreadcrumb, displayName } from './categoryTreeUtils'
+
+// screen-spec §3.3 대상 필드 매핑 (copy.md §4.1) — 표준 카테고리는 필드가 name 1개뿐.
+const FIELD_LABELS: Record<string, string> = { name: '카테고리명이' }
 
 const LOCALES: { key: CategoryLocale; label: string; isSource: boolean }[] = [
   { key: 'ko', label: '한국어 (원본)', isSource: true },
@@ -33,6 +51,7 @@ function TranslationEditor({
   isSource,
   row,
   sourceUpdatedAt,
+  sourceText,
 }: {
   categoryId: string
   locale: CategoryLocale
@@ -40,43 +59,101 @@ function TranslationEditor({
   isSource: boolean
   row: StandardCategoryRecord['translations'][CategoryLocale]
   sourceUpdatedAt: string | null
+  sourceText: string
 }) {
   const router = useRouter()
   const [name, setName] = useState(row?.name ?? '')
   const [status, setStatus] = useState<TranslationStatus>(row?.status ?? 'draft')
+  // Gap G-3 / §6.4 — local state so the AI-fill response can update this already-mounted card
+  // directly, instead of relying on router.refresh().
+  const [translationSource, setTranslationSource] = useState<'human' | 'ai' | 'ai_reviewed'>(
+    row?.translation_source ?? 'human',
+  )
+  const [hasTranslation, setHasTranslation] = useState(row !== null)
+  const [sourceSyncedAt, setSourceSyncedAt] = useState<string | null>(row?.source_synced_at ?? null)
   const [saving, setSaving] = useState(false)
+  const [aiFilling, setAiFilling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const badge = computeTranslationBadge({ isSource, row, sourceUpdatedAt })
+  const localRow: TranslationRow | null = hasTranslation
+    ? { status, source_synced_at: sourceSyncedAt, updated_at: row?.updated_at ?? sourceUpdatedAt ?? '', translation_source: translationSource }
+    : null
+  const badge = computeTranslationBadge({ isSource, row: localRow, sourceUpdatedAt })
+  const sourceBadge = computeSourceBadge(localRow)
 
   async function save() {
+    if (translationSource === 'ai' && !window.confirm(AI_REVIEW_SAVE_CONFIRM_MESSAGE)) return
+
     setSaving(true)
     setError(null)
     const result = await upsertStandardCategoryTranslationAction({ categoryId, locale, name, status })
     setSaving(false)
     if (!result.success) {
-      setError('저장 실패')
+      setError(translationSource === 'ai' && status === 'published' ? AI_DRAFT_PUBLISH_SAVE_REJECTED_MESSAGE : '저장 실패')
       return
     }
+    if (translationSource === 'ai') setTranslationSource('ai_reviewed')
+    setHasTranslation(true)
+    setSourceSyncedAt(sourceUpdatedAt)
     router.refresh()
   }
 
+  async function aiFill() {
+    const confirmMessage = getAiFillConfirmMessage({ hasTranslation, status, translationSource, localeLabel: label })
+    if (confirmMessage !== null && !window.confirm(confirmMessage)) return
+
+    setAiFilling(true)
+    setError(null)
+    // 표준 카테고리의 대상 로케일은 en/ja뿐(ko는 소스) — 이 호출은 !isSource일 때만 렌더되는
+    // 버튼에서만 일어나므로 locale은 항상 'en' | 'ja'다(screen-spec §1.2 "소스 로케일 카드에는
+    // 버튼 노출 안 함").
+    const result = await aiFillStandardCategoryTranslationAction({ categoryId, targetLocale: locale as 'en' | 'ja' })
+    setAiFilling(false)
+    if (!result.success) {
+      setError(getAiFillErrorMessage(result, FIELD_LABELS))
+      return
+    }
+    setName(result.body.name)
+    setStatus(result.status)
+    setTranslationSource(result.translationSource)
+    setHasTranslation(true)
+    setSourceSyncedAt(sourceUpdatedAt)
+    router.refresh()
+  }
+
+  const aiFillDisabledReason = getAiFillDisabledReason([{ label: '카테고리명이', value: sourceText }])
+
   return (
     <div className="rounded-card border border-neutral-200 p-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="admin-body-sm font-medium text-neutral-900">{label}</p>
-        <span className={`rounded-sm px-2 py-0.5 admin-label-sm ${TONE_CLASS[badge.tone]}`}>{badge.label}</span>
+        <div className="flex flex-wrap items-center gap-2">
+          {!isSource && <AiFillButton loading={aiFilling} disabledReason={aiFillDisabledReason} disabled={saving} onClick={aiFill} />}
+          <span className={`rounded-sm px-2 py-0.5 admin-label-sm ${TONE_CLASS[badge.tone]}`}>{badge.label}</span>
+          {sourceBadge && <span className={`rounded-sm px-2 py-0.5 admin-label-sm ${TONE_CLASS[sourceBadge.tone]}`}>{sourceBadge.label}</span>}
+        </div>
       </div>
       <input
         className={`${adminInputClass} mt-2 w-full`}
         placeholder="카테고리명"
         value={name}
         onChange={(e) => setName(e.target.value)}
+        disabled={aiFilling}
       />
       <div className="mt-2 flex items-center justify-between gap-2">
-        <select className={`${adminInputClass} py-1`} value={status} onChange={(e) => setStatus(e.target.value as TranslationStatus)}>
+        <select
+          className={`${adminInputClass} py-1`}
+          value={status}
+          onChange={(e) => setStatus(e.target.value as TranslationStatus)}
+          disabled={aiFilling}
+        >
           {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option
+              key={opt.value}
+              value={opt.value}
+              disabled={opt.value === 'published' && translationSource === 'ai'}
+              title={opt.value === 'published' && translationSource === 'ai' ? AI_DRAFT_PUBLISH_GUARD_CAPTION : undefined}
+            >
               {opt.label}
             </option>
           ))}
@@ -84,13 +161,15 @@ function TranslationEditor({
         <button
           type="button"
           onClick={save}
-          disabled={saving || !name.trim()}
+          disabled={saving || aiFilling || !name.trim()}
           className="admin-label-sm text-primary-600 hover:underline disabled:cursor-not-allowed disabled:text-neutral-300"
         >
           저장
         </button>
       </div>
+      {translationSource === 'ai' && <p className="mt-1 admin-label-sm text-neutral-500">{AI_DRAFT_PUBLISH_GUARD_CAPTION}</p>}
       {error && <p className="mt-1 admin-label-sm text-error">{error}</p>}
+      {!isSource && <p className="mt-1 admin-label-sm text-neutral-400">{AI_FILL_STALE_SOURCE_CAPTION}</p>}
     </div>
   )
 }
@@ -143,6 +222,7 @@ function CategoryDetailPanelContent({
 
   const canDelete = selected.partnerCount === 0 && children.length === 0
   const sourceUpdatedAt = selected.translations.ko?.updated_at ?? null
+  const sourceText = selected.translations.ko?.name ?? ''
 
   async function move(direction: 'up' | 'down') {
     setMoving(true)
@@ -240,6 +320,7 @@ function CategoryDetailPanelContent({
             isSource={isSource}
             row={selected.translations[key]}
             sourceUpdatedAt={sourceUpdatedAt}
+            sourceText={sourceText}
           />
         ))}
       </div>

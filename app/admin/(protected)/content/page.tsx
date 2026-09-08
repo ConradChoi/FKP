@@ -25,7 +25,7 @@ export default async function ContentManagementPage() {
     supabase.from('content_category').select('code, sort_order, is_active').order('sort_order'),
     supabase
       .from('content_category_translation')
-      .select('category_code, locale, name, keywords, status, source_synced_at, updated_at'),
+      .select('category_code, locale, name, keywords, status, source_synced_at, updated_at, translation_source'),
     supabase.from('content_item').select('id, content_key').eq('content_type', 'landing_copy').order('sort_order'),
   ])
 
@@ -34,7 +34,7 @@ export default async function ContentManagementPage() {
     contentItemIds.length > 0
       ? await supabase
           .from('content_translation')
-          .select('content_item_id, locale, body, status, source_synced_at, updated_at')
+          .select('content_item_id, locale, body, status, source_synced_at, updated_at, translation_source')
           .in('content_item_id', contentItemIds)
       : { data: [], error: null }
 
@@ -51,6 +51,7 @@ export default async function ContentManagementPage() {
         status: t.status,
         source_synced_at: t.source_synced_at,
         updated_at: t.updated_at,
+        translation_source: t.translation_source,
       }
     }
     return { code: cat.code, sort_order: cat.sort_order, is_active: cat.is_active, translations: translationsForCategory }
@@ -70,6 +71,7 @@ export default async function ContentManagementPage() {
           status: t.status,
           source_synced_at: t.source_synced_at,
           updated_at: t.updated_at,
+          translation_source: t.translation_source,
         }
       }
       return { contentItemId, contentKey: key, label: LANDING_COPY_LABELS[key] ?? key, translations }

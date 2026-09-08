@@ -18,7 +18,7 @@ async function loadContentItemsWithTranslations(supabase: SupabaseClient, conten
     ids.length > 0
       ? await supabase
           .from('content_translation')
-          .select('content_item_id, locale, body, status, source_synced_at, updated_at')
+          .select('content_item_id, locale, body, status, source_synced_at, updated_at, translation_source')
           .in('content_item_id', ids)
       : { data: [], error: null }
 
@@ -44,6 +44,7 @@ export async function loadArticleRecords(
         status: row.status,
         source_synced_at: row.source_synced_at,
         updated_at: row.updated_at,
+        translation_source: row.translation_source,
       }
     }
     return {
@@ -75,6 +76,7 @@ export async function loadFaqRecords(
         status: row.status,
         source_synced_at: row.source_synced_at,
         updated_at: row.updated_at,
+        translation_source: row.translation_source,
       }
     }
     return {

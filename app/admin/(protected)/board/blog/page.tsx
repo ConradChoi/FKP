@@ -28,7 +28,7 @@ export default async function BlogBoardPage() {
         <NewArticleForm contentType="blog" nextSortOrder={nextSortOrder} />
         <div className="space-y-3">
           {records.map((record) => (
-            <ArticleRow key={record.contentItemId} article={record} urlSegment={CONTENT_TYPE_URL_SEGMENT.blog} />
+            <ArticleRow key={record.contentItemId} article={record} urlSegment={CONTENT_TYPE_URL_SEGMENT.blog} contentType="blog" />
           ))}
         </div>
       </div>

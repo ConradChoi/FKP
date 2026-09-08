@@ -29,7 +29,7 @@ export default async function CaseStudyBoardPage() {
         <NewArticleForm contentType="case_study" nextSortOrder={nextSortOrder} />
         <div className="space-y-3">
           {records.map((record) => (
-            <ArticleRow key={record.contentItemId} article={record} urlSegment={CONTENT_TYPE_URL_SEGMENT.case_study} />
+            <ArticleRow key={record.contentItemId} article={record} urlSegment={CONTENT_TYPE_URL_SEGMENT.case_study} contentType="case_study" />
           ))}
         </div>
       </div>

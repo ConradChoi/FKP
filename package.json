@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@google-cloud/translate": "^10.0.1",
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.3",
     "next": "^15.1.0",

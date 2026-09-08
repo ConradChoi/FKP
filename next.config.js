@@ -21,6 +21,14 @@ const nextConfig = {
   env: {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     PARTNER_DOC_PURGE_CRON_SECRET: process.env.PARTNER_DOC_PURGE_CRON_SECRET,
+    // lib/server/googleTranslate.ts — Admin "AI 초벌 채우기" (admin-ai-translation-draft.
+    // screen-spec.md §6.3). Only ever imported from Server Actions, never a 'use client' file
+    // — see that module's header for why. Same Amplify SSR env-var propagation bug as the two
+    // vars above (project memory: amplify_env_var_bug.md) is why these must be listed here too.
+    GOOGLE_TRANSLATE_PROJECT_ID: process.env.GOOGLE_TRANSLATE_PROJECT_ID,
+    GOOGLE_TRANSLATE_CREDENTIALS_JSON: process.env.GOOGLE_TRANSLATE_CREDENTIALS_JSON,
+    GOOGLE_TRANSLATE_LOCATION: process.env.GOOGLE_TRANSLATE_LOCATION,
+    GOOGLE_TRANSLATE_TIMEOUT_MS: process.env.GOOGLE_TRANSLATE_TIMEOUT_MS,
   },
 }
 

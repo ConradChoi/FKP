@@ -2,9 +2,19 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateArticleItemAction, deleteContentItemAction, upsertFaqTranslationAction } from './actions'
-import { computeTranslationBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
+import { updateArticleItemAction, deleteContentItemAction, upsertFaqTranslationAction, aiFillFaqTranslationAction } from './actions'
+import { computeTranslationBadge, computeSourceBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
 import { adminInputClass } from '@/components/admin/styles'
+import { AiFillButton } from '@/components/admin/AiFillButton'
+import {
+  getAiFillDisabledReason,
+  getAiFillConfirmMessage,
+  getAiFillErrorMessage,
+  AI_REVIEW_SAVE_CONFIRM_MESSAGE,
+  AI_DRAFT_PUBLISH_GUARD_CAPTION,
+  AI_DRAFT_PUBLISH_SAVE_REJECTED_MESSAGE,
+  AI_FILL_STALE_SOURCE_CAPTION,
+} from '@/lib/admin/aiFillClient'
 
 export interface FaqTranslationRow extends TranslationRow {
   question: string
@@ -30,6 +40,9 @@ const STATUS_OPTIONS: { value: 'draft' | 'translated' | 'published'; label: stri
   { value: 'published', label: '게시됨' },
 ]
 
+// screen-spec §3.4 대상 필드 매핑 (copy.md §4.1)
+const FIELD_LABELS: Record<string, string> = { question: '질문이', answer: '답변이' }
+
 function Badge({ label, tone }: { label: string; tone: keyof typeof TONE_CLASS }) {
   return <span className={`rounded-full px-2 py-1 admin-label-sm ${TONE_CLASS[tone]}`}>{label}</span>
 }
@@ -41,6 +54,8 @@ function FaqTranslationEditor({
   isSource,
   row,
   sourceUpdatedAt,
+  sourceQuestion,
+  sourceAnswer,
 }: {
   contentItemId: string
   locale: 'en' | 'ja'
@@ -48,6 +63,8 @@ function FaqTranslationEditor({
   isSource: boolean
   row: FaqTranslationRow | null
   sourceUpdatedAt: string | null
+  sourceQuestion: string
+  sourceAnswer: string
 }) {
   const router = useRouter()
   const [question, setQuestion] = useState(row?.question ?? '')
@@ -55,54 +72,120 @@ function FaqTranslationEditor({
   const [status, setStatus] = useState<'draft' | 'translated' | 'published'>(
     (row?.status as 'draft' | 'translated' | 'published') ?? 'draft',
   )
+  // Gap G-3 / §6.4 — local state so the AI-fill response can update this already-mounted card
+  // directly, instead of relying on router.refresh().
+  const [translationSource, setTranslationSource] = useState<'human' | 'ai' | 'ai_reviewed'>(
+    row?.translation_source ?? 'human',
+  )
+  const [hasTranslation, setHasTranslation] = useState(row !== null)
+  const [sourceSyncedAt, setSourceSyncedAt] = useState<string | null>(row?.source_synced_at ?? null)
   const [saving, setSaving] = useState(false)
+  const [aiFilling, setAiFilling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const badge = computeTranslationBadge({ isSource, row, sourceUpdatedAt })
+  const localRow: TranslationRow | null = hasTranslation
+    ? { status, source_synced_at: sourceSyncedAt, updated_at: row?.updated_at ?? sourceUpdatedAt ?? '', translation_source: translationSource }
+    : null
+  const badge = computeTranslationBadge({ isSource, row: localRow, sourceUpdatedAt })
+  const sourceBadge = computeSourceBadge(localRow)
 
   async function save() {
+    if (translationSource === 'ai' && !window.confirm(AI_REVIEW_SAVE_CONFIRM_MESSAGE)) return
+
     setSaving(true)
     setError(null)
     const result = await upsertFaqTranslationAction({ contentItemId, locale, question, answer, status })
     setSaving(false)
     if (!result.success) {
-      setError('저장 실패')
+      setError(translationSource === 'ai' && status === 'published' ? AI_DRAFT_PUBLISH_SAVE_REJECTED_MESSAGE : '저장 실패')
       return
     }
+    if (translationSource === 'ai') setTranslationSource('ai_reviewed')
+    setHasTranslation(true)
+    setSourceSyncedAt(sourceUpdatedAt)
     router.refresh()
   }
 
+  async function aiFill() {
+    const confirmMessage = getAiFillConfirmMessage({ hasTranslation, status, translationSource, localeLabel: label })
+    if (confirmMessage !== null && !window.confirm(confirmMessage)) return
+
+    setAiFilling(true)
+    setError(null)
+    const result = await aiFillFaqTranslationAction({ contentItemId, targetLocale: locale })
+    setAiFilling(false)
+    if (!result.success) {
+      setError(getAiFillErrorMessage(result, FIELD_LABELS))
+      return
+    }
+    setQuestion(result.body.question)
+    setAnswer(result.body.answer)
+    setStatus(result.status)
+    setTranslationSource(result.translationSource)
+    setHasTranslation(true)
+    setSourceSyncedAt(sourceUpdatedAt)
+    router.refresh()
+  }
+
+  const aiFillDisabledReason = getAiFillDisabledReason([
+    { label: '질문이', value: sourceQuestion },
+    { label: '답변이', value: sourceAnswer },
+  ])
+
   return (
     <div className="rounded-card border border-neutral-200 p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="admin-body-sm font-medium text-neutral-900">{label}</p>
-        <Badge label={badge.label} tone={badge.tone} />
+        <div className="flex flex-wrap items-center gap-2">
+          {!isSource && <AiFillButton loading={aiFilling} disabledReason={aiFillDisabledReason} disabled={saving} onClick={aiFill} />}
+          <Badge label={badge.label} tone={badge.tone} />
+          {sourceBadge && <Badge label={sourceBadge.label} tone={sourceBadge.tone} />}
+        </div>
       </div>
       <div className="mt-3 space-y-2">
-        <input className={adminInputClass} placeholder="질문" value={question} onChange={(e) => setQuestion(e.target.value)} />
+        <input
+          className={adminInputClass}
+          placeholder="질문"
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          disabled={aiFilling}
+        />
         <textarea
           className={`${adminInputClass} min-h-[100px]`}
           placeholder="답변"
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
+          disabled={aiFilling}
         />
-        <select className={adminInputClass} value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+        <select
+          className={adminInputClass}
+          value={status}
+          onChange={(e) => setStatus(e.target.value as typeof status)}
+          disabled={aiFilling}
+        >
           {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
+            <option
+              key={opt.value}
+              value={opt.value}
+              disabled={opt.value === 'published' && translationSource === 'ai'}
+              title={opt.value === 'published' && translationSource === 'ai' ? AI_DRAFT_PUBLISH_GUARD_CAPTION : undefined}
+            >
               {opt.label}
             </option>
           ))}
         </select>
+        {translationSource === 'ai' && <p className="admin-label-sm text-neutral-500">{AI_DRAFT_PUBLISH_GUARD_CAPTION}</p>}
       </div>
       {error && <p className={`mt-2 admin-label-sm text-error`}>{error}</p>}
       <button
         type="button"
         onClick={save}
-        disabled={saving || !question}
+        disabled={saving || aiFilling || !question}
         className="mt-3 rounded-input bg-primary-600 px-4 py-2 admin-label-sm text-neutral-0 hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
       >
         저장
       </button>
+      {!isSource && <p className="mt-2 admin-label-sm text-neutral-400">{AI_FILL_STALE_SOURCE_CAPTION}</p>}
     </div>
   )
 }
@@ -117,6 +200,8 @@ export function FaqRow({ faq }: { faq: FaqRecord }) {
 
   const dirty = sortOrder !== faq.sortOrder || isActive !== faq.isActive
   const sourceUpdatedAt = faq.translations.en?.updated_at ?? null
+  const sourceQuestion = faq.translations.en?.question ?? ''
+  const sourceAnswer = faq.translations.en?.answer ?? ''
 
   async function saveSummary() {
     setSaving(true)
@@ -186,6 +271,8 @@ export function FaqRow({ faq }: { faq: FaqRecord }) {
               isSource={isSource}
               row={faq.translations[key] ?? null}
               sourceUpdatedAt={sourceUpdatedAt}
+              sourceQuestion={sourceQuestion}
+              sourceAnswer={sourceAnswer}
             />
           ))}
         </div>

@@ -21,6 +21,7 @@ export interface CategoryTranslationRecord {
   status: TranslationStatus
   source_synced_at: string | null
   updated_at: string
+  translation_source: 'human' | 'ai' | 'ai_reviewed'
 }
 
 export interface StandardCategoryRecord {
@@ -53,7 +54,9 @@ export default async function CategoriesPage() {
       .from('standard_category')
       .select('id, parent_id, code, source, is_active, sort_order, exposed_to_fkp, created_at, updated_at')
       .order('sort_order'),
-    supabase.from('standard_category_translation').select('category_id, locale, name, status, source_synced_at, updated_at'),
+    supabase
+      .from('standard_category_translation')
+      .select('category_id, locale, name, status, source_synced_at, updated_at, translation_source'),
     supabase.from('partner_standard_category').select('standard_category_id'),
   ])
 
@@ -65,6 +68,7 @@ export default async function CategoriesPage() {
       status: t.status,
       source_synced_at: t.source_synced_at,
       updated_at: t.updated_at,
+      translation_source: t.translation_source,
     }
     translationsByCategory.set(t.category_id, bucket)
   }

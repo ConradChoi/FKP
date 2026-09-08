@@ -14,3 +14,16 @@ export const adminButtonDestructiveClass =
 
 export const adminButtonGhostClass =
   'rounded-input px-4 py-2 admin-label text-neutral-600 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50'
+
+// Design Ref: docs/02-design/features/admin-ai-translation-draft.ui-spec.md §1.2 — "AI 초벌
+// 채우기" card-header button. Same color values as adminButtonSecondaryClass (no new colors),
+// but a compact size (px-3 py-1.5 vs px-4 py-2) to sit next to admin-label-sm badges, plus a
+// "primary-tinted" hover so it reads as a distinct 3rd tone from 저장(primary fill)/삭제
+// (destructive fill). Exported once (not copy-pasted into the 5 target files) per that doc's
+// explicit recommendation, to avoid the tone drift it flags already happened with 저장 buttons.
+export const adminButtonAiFillClass =
+  'inline-flex items-center gap-1.5 rounded-input border border-neutral-300 bg-neutral-0 px-3 py-1.5 admin-label-sm text-neutral-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-50 disabled:text-neutral-400'
+
+// Design Ref: ui-spec §1.4 — scaled-down version of components/RequestForm/SubmitStatus.tsx's
+// spinner recipe, reused as-is (no new animation/colors).
+export const adminSpinnerClass = 'h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-primary-600'
