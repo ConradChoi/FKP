@@ -12,6 +12,7 @@ import {
 import { computeTranslationBadge, computeSourceBadge, TONE_CLASS, type TranslationRow } from '@/lib/admin/translationStatus'
 import { adminInputClass } from '@/components/admin/styles'
 import { AiFillButton } from '@/components/admin/AiFillButton'
+import { NoticeBodyEditor } from '@/components/admin/NoticeBodyEditor'
 import {
   getAiFillDisabledReason,
   getAiFillConfirmMessage,
@@ -233,16 +234,31 @@ function ArticleTranslationEditor({
           disabled={aiFilling}
         />
         {/* notice-board-privacy-review.md §1.3 NB-B8 — NS-1 caption is bound to this body-field
-            wrapper, not to a rich-editor component, so it keeps rendering unchanged once WS-3
-            replaces the textarea below with a real editor. */}
+            wrapper, not to a rich-editor component, so it keeps rendering unchanged now that WS-3
+            has replaced the notice textarea with NoticeBodyEditor below. case_study/faq
+            (isNotice=false) keep the plain textarea unchanged — the editor is notice-only. */}
         <div>
-          <textarea
-            className={`${adminInputClass} min-h-[200px] w-full font-mono admin-body-sm`}
-            placeholder="본문 (마크다운: #/## 제목, **굵게**, - 목록, 1. 번호목록, |표|, [링크](url))"
-            value={bodyMarkdown}
-            onChange={(e) => setBodyMarkdown(e.target.value)}
-            disabled={aiFilling}
-          />
+          {isNotice ? (
+            <NoticeBodyEditor
+              value={bodyMarkdown}
+              onChange={setBodyMarkdown}
+              contentItemId={contentItemId}
+              disabled={aiFilling}
+              // lastSavedStatus (not the possibly-unsaved `status` select value) — "이미 게시된
+              // 공지"는 실제로 persist된 상태를 뜻한다. 관리자가 방금 드롭다운을 '게시됨'으로 바꿔만
+              // 놓고 아직 저장을 안 눌렀다면 그 공지는 아직 라이브가 아니므로 이 추가 경고가
+              // 불필요하다(qa-reviewer round 2, 주요 이슈 #2).
+              isPublished={lastSavedStatus === 'published'}
+            />
+          ) : (
+            <textarea
+              className={`${adminInputClass} min-h-[200px] w-full font-mono admin-body-sm`}
+              placeholder="본문 (마크다운: #/## 제목, **굵게**, - 목록, 1. 번호목록, |표|, [링크](url))"
+              value={bodyMarkdown}
+              onChange={(e) => setBodyMarkdown(e.target.value)}
+              disabled={aiFilling}
+            />
+          )}
           {isNotice && <p className="mt-1 admin-label-sm text-accent-700">⚠ {NS1_CAPTION}</p>}
         </div>
         <select

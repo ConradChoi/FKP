@@ -95,6 +95,8 @@ export const adminEditorToolbarButtonActiveClass =
 |---|---|---|
 | 기본(비활성 서식) | `adminEditorToolbarButtonClass` | 커서 위치에 해당 서식이 적용돼 있지 않음 |
 | 활성(적용됨) | `adminEditorToolbarButtonClass + adminEditorToolbarButtonActiveClass` | 커서가 굵은 글씨/목록/링크 안에 있을 때. `aria-pressed="true"` 동반 |
+
+> **구현 후기(2026-09-09, qa-reviewer 확인)**: 실제 구현은 순수 `<textarea>` + 커서 위치에 마크다운 문자열을 삽입하는 방식(§0.2 XSS 방어선 유지 목적, `renderMarkdown.tsx`가 raw HTML을 파싱하지 않는 것이 유일한 방어선이라 contentEditable 기반 WYSIWYG를 피함)을 택했다. 이 아키텍처에서는 "커서가 지금 어떤 서식 안에 있는지"를 판정할 방법이 구조적으로 없어(파싱 없이는 불가능), 위 활성 상태 표시(`aria-pressed`, 액티브 톤)와 §1.1의 "드롭다운이 현재 블록 종류를 표시" 요구사항은 **구현하지 않았다**. 배포를 막을 사유는 아니라고 판단됨(qa-reviewer 승인) — 향후 진짜 WYSIWYG로 교체하지 않는 한 이 트레이드오프는 유지된다.
 | disabled | `disabled` 속성만 부여(예: 이미지 업로드 중에는 새 이미지 버튼 disabled) | 별도 클래스 불필요, `disabled:` 접두 클래스가 이미 처리 |
 | 툴바 컨테이너 | `flex flex-wrap items-center gap-1 border-b border-neutral-200 bg-neutral-50 px-2 py-1.5` | `flex-wrap` 필수 — `seepn_user` 3열 그리드(§3.4)에서 카드 폭이 좁아지면 자동 줄바꿈되어야 함(AI 버튼 헤더와 동일 원칙, `admin-ai-translation-draft.ui-spec.md` §1.1 재확인) |
 | 그룹 구분선 | `<span className="mx-1 h-5 w-px bg-neutral-200" aria-hidden="true" />` | §1.1의 4개 그룹 사이 |
@@ -130,6 +132,8 @@ export const adminEditorToolbarButtonActiveClass =
 ### 2.1 삽입 트리거
 
 `🖼 이미지` 버튼 클릭 → 네이티브 파일 선택 다이얼로그. `accept="image/jpeg,image/png,image/webp"`를 **HTML `accept` 속성에도 명시**해 SVG/GIF 등을 파일 탐색기 단계에서부터 최대한 걸러낸다(§2.4, C-3 SVG 제외 권고의 UX 선제 조치 — 서버 검증을 대체하지 않음, 어디까지나 사용자 실수를 줄이는 보조 장치).
+
+> **구현 후기(2026-09-09)**: 실제 배포된 백엔드(`lib/forms/fileSignature.ts`의 `detectImageMimeType`)는 **webp 매직바이트 검증을 지원하지 않는다**(RIFF 컨테이너 앞 4바이트만으로는 wav/avi와 구분 불가 — privacy 검토가 v1.0 제외를 명시적으로 권고한 항목). 실제 구현은 `accept="image/jpeg,image/png"`, 에러 문구도 "jpg/png만 가능"으로 맞춰져 있다. 이 문서의 webp 언급(본 절, §2.3④)은 **낡은 상태**이며 백엔드가 기준이다 — webp를 실제로 지원하려면 별도로 RIFF/VP8 시그니처 검증을 추가하는 작업이 선행되어야 한다.
 
 ### 2.2 NS-5 공개 경고 문구 — 노출 위치와 톤
 

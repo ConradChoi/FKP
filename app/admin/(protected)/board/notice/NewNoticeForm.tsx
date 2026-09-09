@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createNoticeAction, type NoticeTargetAudience } from '../actions'
 import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
+import { NoticeBodyEditor } from '@/components/admin/NoticeBodyEditor'
 
 const SEEPN_USER_NO_CONSUMER_SCREEN_WARNING =
   '이 대상은 아직 볼 수 있는 화면이 없습니다 — seepn.me 준비 중. 지금 게시해도 아무도 보지 못합니다.'
@@ -119,14 +120,15 @@ export function NewNoticeForm({ nextSortOrder }: { nextSortOrder: number }) {
         onChange={(e) => setExcerpt(e.target.value)}
       />
       {/* notice-board-privacy-review.md §1.3 NB-B8 — bound to the body field wrapper, not to a
-          future rich editor, so it survives WS-3's editor swap unchanged. */}
+          future rich editor, so it survives WS-3's editor swap unchanged. WS-3: textarea replaced
+          with NoticeBodyEditor (툴바+이미지). contentItemId={null} here — the notice row doesn't
+          exist yet at this point in the flow (createNoticeAction hasn't run), so the editor
+          disables its 이미지 버튼 and shows its own inline guidance
+          ("이미지는 공지를 먼저 저장한 후 추가할 수 있습니다."); image insertion becomes available
+          once the admin re-opens this notice from the list (ArticleRow's edit card, which has a
+          real contentItemId). */}
       <div className="mt-3">
-        <textarea
-          className={`${adminInputClass} min-h-[200px] w-full font-mono admin-body-sm`}
-          placeholder="본문 (마크다운: #/## 제목, **굵게**, - 목록, 1. 번호목록, |표|, [링크](url))"
-          value={bodyMarkdown}
-          onChange={(e) => setBodyMarkdown(e.target.value)}
-        />
+        <NoticeBodyEditor value={bodyMarkdown} onChange={setBodyMarkdown} contentItemId={null} disabled={saving} />
         <p className="mt-1 admin-label-sm text-accent-700">⚠ {NS1_CAPTION}</p>
       </div>
 

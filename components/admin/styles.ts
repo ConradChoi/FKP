@@ -27,3 +27,12 @@ export const adminButtonAiFillClass =
 // Design Ref: ui-spec §1.4 — scaled-down version of components/RequestForm/SubmitStatus.tsx's
 // spinner recipe, reused as-is (no new animation/colors).
 export const adminSpinnerClass = 'h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-300 border-t-primary-600'
+
+// Design Ref: docs/02-design/features/notice-board.ui-spec.md §1.2 — compact icon-ish toolbar
+// button for the notice body editor (WS-3). No new color values (same neutral/primary tones as
+// the rest of Admin) — just a smaller footprint (h-8, px-2) than the px-4/py-2 form-action
+// buttons above, sized for 5-7 buttons sitting in one row (§1.2 table).
+export const adminEditorToolbarButtonClass =
+  'inline-flex h-8 min-w-[32px] items-center justify-center gap-1 rounded-sm px-2 admin-body-sm text-neutral-600 transition-colors hover:bg-neutral-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-primary-500 disabled:cursor-not-allowed disabled:text-neutral-300'
+
+export const adminEditorToolbarButtonActiveClass = 'bg-primary-50 text-primary-700 hover:bg-primary-100'

@@ -34,3 +34,23 @@ export function extensionForDocumentMimeType(mimeType: AllowedDocumentMimeType):
   if (mimeType === 'image/jpeg') return 'jpg'
   return 'png'
 }
+
+// Design Ref: notice-board-v1.0.prd.md §7.6 (N-R16 image pipeline) +
+// notice-board-privacy-review.md §2.4 — the notice-image (`content-image` bucket) upload path
+// (app/admin/(protected)/board/actions.ts's uploadNoticeImageAction) only ever needs a subset of
+// the document allow-list above (jpeg/png, never pdf). This is a NARROWING wrapper around the
+// same magic-byte signatures already defined above, not a new format — it deliberately does NOT
+// add webp: `detectDocumentMimeType`'s signature-matching approach only inspects the FIRST few
+// bytes, and webp's container signature is `RIFF....WEBP` — the "RIFF" 4 bytes at offset 0 are
+// shared with other non-image RIFF containers (wav/avi), so a correct webp check needs a SECOND
+// signature check at offset 8, which this module doesn't implement. Per the privacy review's
+// explicit v1.0 recommendation, adding webp is deferred rather than shipping a check that could
+// misidentify a wav/avi file as an image (§2.4: "굳이 필요하지 않으면 jpeg/png 2종으로 시작하는
+// 편이 안전하고, 늘리는 건 쉽다").
+export type AllowedNoticeImageMimeType = 'image/jpeg' | 'image/png'
+
+export function detectImageMimeType(bytes: Buffer): AllowedNoticeImageMimeType | null {
+  if (matchesSignature(bytes, JPEG_SIGNATURE)) return 'image/jpeg'
+  if (matchesSignature(bytes, PNG_SIGNATURE)) return 'image/png'
+  return null
+}

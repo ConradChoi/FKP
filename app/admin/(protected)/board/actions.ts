@@ -1,5 +1,6 @@
 'use server'
 
+import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
 import type { ActionResult } from '@/lib/supabase/adminAuthActions'
@@ -11,6 +12,8 @@ import {
   validateSourceFields,
   validateTargetLocale,
 } from '@/lib/server/aiFill'
+import { detectImageMimeType, extensionForDocumentMimeType } from '@/lib/forms/fileSignature'
+import { stripImageMetadata } from '@/lib/content/stripImageMetadata'
 
 // Design Ref: 대표 피드백(2026-08-27) — 메뉴관리에서 게시판관리(board_management) 그룹 아래
 // 블로그/사례/FAQ 메뉴를 직접 구성했으므로, 그동안 /admin/content 탭 안에 있던 기능을 각자의
@@ -575,4 +578,170 @@ export async function aiFillFaqTranslationAction(
     status: 'draft',
     translationSource: 'ai',
   }
+}
+
+// =============================================================================
+// 공지 본문 이미지 업로드/삭제 (WS-3, notice-board-v1.0.prd.md §7.6/N-R16/C-3,
+// notice-board-privacy-review.md §2 전체 — NB-B1/B2/B4/B10, §2.6 NB-B9)
+// =============================================================================
+//
+// Design notes (read before changing anything below):
+//
+// - Bucket: content-image (public=true, 20260909110000_notice_image_bucket.sql). That
+//   migration's storage.objects RLS grants INSERT/DELETE DIRECTLY to an authenticated admin
+//   session holding content_management create/delete — unlike partner-doc (whose RLS grants
+//   admin SELECT only, forcing uploadPartnerDocumentAction in
+//   ../partners/[id]/actions.ts to fall back to getSupabaseAdminClient()/service_role for the
+//   write), this bucket's policies are shaped so the admin's OWN JWT
+//   (getSupabaseAuthServerClient()) can write directly. Privacy review NB-B4 requires exactly
+//   this: "관리자 본인 JWT로 Storage에 쓰게 해서 storage.objects RLS가 실제 통제선이 되게
+//   한다." Do NOT switch this to getSupabaseAdminClient() — that would make the RLS policies
+//   in the migration decorative and move the entire authorization decision into application
+//   code, which is precisely what NB-B4 warns against.
+// - No SELECT policy exists on the bucket (NB-B1) and none should ever be added here either —
+//   getPublicUrl() below works without one because the bucket itself is public=true. See the
+//   migration file's header comment for the full reasoning (a SELECT policy would open the
+//   LIST endpoint, not "allow reads").
+// - contentItemId is a REQUIRED parameter, not derived or optional: the storage path
+//   convention (content-image/{content_item_id}/{uuid}.{ext}, privacy review §2.3) assumes the
+//   notice row already exists. createNoticeAction always creates that row (with a draft 'ko'
+//   translation) before any editing UI for its body can open, so by the time an admin is
+//   editing a notice's body with the rich-text editor, its contentItemId is always available —
+//   frontend-developer: do not call this action before the notice has been created via
+//   createNoticeAction.
+// - EXIF/metadata stripping (NB-B10, blocking — not optional) happens AFTER magic-byte
+//   detection and BEFORE the Storage write, so the bytes that actually reach the public bucket
+//   never carry the original capture metadata. See lib/content/stripImageMetadata.ts's own
+//   comment for the byte-level approach and the Orientation-tag trade-off it accepts.
+// - webp is intentionally unsupported (detectImageMimeType only matches jpeg/png) — see that
+//   function's comment in lib/forms/fileSignature.ts for why.
+
+const NOTICE_IMAGE_BUCKET = 'content-image'
+const MAX_NOTICE_IMAGE_BYTES = 2 * 1024 * 1024 // 2MB — matches the bucket's file_size_limit
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export interface UploadNoticeImageResult {
+  success: boolean
+  url?: string
+  path?: string
+  error?: string
+  errorCode?:
+    | 'CONFIG_ERROR'
+    | 'ACCESS_DENIED'
+    | 'VALIDATION_ERROR'
+    | 'FILE_TOO_LARGE'
+    | 'UNSUPPORTED_FORMAT'
+    | 'METADATA_STRIP_FAILED'
+    | 'UPLOAD_FAILED'
+}
+
+export async function uploadNoticeImageAction(contentItemId: string, file: File): Promise<UploadNoticeImageResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  if (!UUID_RE.test(contentItemId)) {
+    return { success: false, error: 'invalid_content_item_id', errorCode: 'VALIDATION_ERROR' }
+  }
+  if (!(file instanceof File)) {
+    return { success: false, error: 'invalid_input', errorCode: 'VALIDATION_ERROR' }
+  }
+
+  // NB-R2 (non-blocking recommendation, cheap to satisfy): reject by client-reported size
+  // before reading the full body into memory. This is a first-pass check only — file.size is
+  // caller-reported metadata, not a guarantee — the actual enforced limit is the byte-length
+  // check right after arrayBuffer() below, plus the bucket's own file_size_limit
+  // (defense-in-depth, migration comment §1).
+  if (file.size <= 0 || file.size > MAX_NOTICE_IMAGE_BYTES) {
+    return { success: false, error: 'file_too_large', errorCode: 'FILE_TOO_LARGE' }
+  }
+
+  // (1) 권한 재검증 — content_management create. "이 버튼이 admin 화면에만 보인다"는 사실은
+  // 통제가 아니다(updateArticleItemAction의 M-1 주석과 동일 원칙 — 이 액션은 독립된 공개
+  // 엔드포인트이므로 UI가 무엇을 렌더링하든 매번 다시 검증한다).
+  const { data: allowed } = await supabase.rpc('has_menu_permission_check', {
+    p_menu_code: 'content_management',
+    p_action: 'create',
+  })
+  if (!allowed) return { success: false, error: 'access_denied', errorCode: 'ACCESS_DENIED' }
+
+  const bytes = Buffer.from(await file.arrayBuffer())
+  if (bytes.length > MAX_NOTICE_IMAGE_BYTES) {
+    return { success: false, error: 'file_too_large', errorCode: 'FILE_TOO_LARGE' }
+  }
+
+  // (2) 매직바이트 검증 — 선언된 file.type/원본 확장자는 신뢰하지 않는다(NB-B2). jpeg/png만
+  // 허용(webp 미지원 — detectImageMimeType 주석 참고).
+  const detectedMimeType = detectImageMimeType(bytes)
+  if (!detectedMimeType) {
+    return { success: false, error: 'unsupported_format', errorCode: 'UNSUPPORTED_FORMAT' }
+  }
+
+  // (3) EXIF 등 메타데이터 스트립 — 필수(NB-B10). 새 런타임 의존성 없이 바이트 레벨로 JPEG
+  // APP1/APP13 세그먼트, PNG eXIf/tEXt/iTXt/zTXt 청크를 제거한다. Orientation 트레이드오프는
+  // stripImageMetadata.ts 주석 참고.
+  //
+  // qa-reviewer (2026-09-09, blocking) — fail-closed, not fail-safe: stripImageMetadata returns
+  // null when the marker/chunk walk hits ANY structure it doesn't fully parse (malformed length,
+  // truncated file, missing IEND, etc.), instead of the file's first version, which passed the
+  // unparsed remainder through untouched in that situation. That was the wrong trade-off for this
+  // feature specifically: an unparsed remainder is exactly where an un-stripped APP1/eXIf segment
+  // could still be sitting, and unlike a broken image, a leftover GPS tag is invisible everywhere
+  // in this app (no EXIF viewer anywhere) — nobody would ever notice it happened. Reject the
+  // upload outright rather than risk publishing it (stripImageMetadata.ts file header has the
+  // full reasoning). Ordinary phone-camera JPEGs / screenshot PNGs parse cleanly and are
+  // unaffected; only unusual/malformed files hit this branch.
+  const strippedBytes = stripImageMetadata(bytes, detectedMimeType)
+  if (!strippedBytes) {
+    return { success: false, error: 'metadata_strip_failed', errorCode: 'METADATA_STRIP_FAILED' }
+  }
+
+  // (4) 서버 생성 UUID 파일명 — 원본 파일명은 절대 사용하지 않는다(NB-B2). 확장자는 탐지된
+  // MIME에서 파생(extensionForDocumentMimeType은 'image/jpeg'|'image/png'를 포함하는 상위
+  // 유니온을 받으므로 그대로 재사용 가능).
+  const objectPath = `${contentItemId}/${randomUUID()}.${extensionForDocumentMimeType(detectedMimeType)}`
+
+  // (5) 관리자 본인 세션(JWT)으로 업로드 — service_role 아님(파일 상단 주석, NB-B4).
+  // Storage에 저장하는 contentType은 탐지된 MIME으로 명시 설정한다 — 클라이언트가 보낸
+  // Content-Type을 그대로 저장하면 허용 목록을 통과한 파일이 의도와 다른 Content-Type으로
+  // 서빙될 수 있다(privacy review §2.4 "추가 확인 사항").
+  const { error: uploadError } = await supabase.storage
+    .from(NOTICE_IMAGE_BUCKET)
+    .upload(objectPath, strippedBytes, { contentType: detectedMimeType })
+  if (uploadError) return { success: false, error: uploadError.message, errorCode: 'UPLOAD_FAILED' }
+
+  const { data: publicUrlData } = supabase.storage.from(NOTICE_IMAGE_BUCKET).getPublicUrl(objectPath)
+
+  return { success: true, url: publicUrlData.publicUrl, path: objectPath }
+}
+
+export interface DeleteNoticeImageResult {
+  success: boolean
+  error?: string
+  errorCode?: 'CONFIG_ERROR' | 'ACCESS_DENIED' | 'VALIDATION_ERROR' | 'DELETE_FAILED'
+}
+
+// privacy review §2.6 NB-B9 — "본문에서 링크만 지우면 됨"은 반려된 설계. 이 액션이 그
+// "최소한의 수동 삭제 경로"다. path는 uploadNoticeImageAction이 반환한 값을 그대로 넘겨받는
+// 것을 전제로 한다(프론트엔드가 임의 문자열을 입력받아 넘기는 UI를 만들지 않는다) — 그래도
+// 서버는 아래에서 명백한 경로 조작 패턴만 방어적으로 걸러낸다. content_management delete
+// 권한을 재검증하며, 이는 create와 다른 권한 비트이므로 별도로 확인해야 한다(이 프로젝트
+// RBAC은 create/read/update/delete를 독립적으로 부여할 수 있다).
+export async function deleteNoticeImageAction(path: string): Promise<DeleteNoticeImageResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  if (!path || path.includes('..') || path.startsWith('/')) {
+    return { success: false, error: 'invalid_path', errorCode: 'VALIDATION_ERROR' }
+  }
+
+  const { data: allowed } = await supabase.rpc('has_menu_permission_check', {
+    p_menu_code: 'content_management',
+    p_action: 'delete',
+  })
+  if (!allowed) return { success: false, error: 'access_denied', errorCode: 'ACCESS_DENIED' }
+
+  const { error } = await supabase.storage.from(NOTICE_IMAGE_BUCKET).remove([path])
+  if (error) return { success: false, error: error.message, errorCode: 'DELETE_FAILED' }
+
+  return { success: true }
 }

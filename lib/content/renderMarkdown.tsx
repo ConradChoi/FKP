@@ -5,19 +5,70 @@
 // behavior as a side effect of a content-management feature touching it).
 //
 // Supported subset (§5.3): #/## headings, **bold**, "- " bullets, "1. " numbered lists,
-// "| ... |" tables, and (new here) [text](url) links. Anything else (images, code
-// blocks, blockquotes, raw HTML) is left as plain text — never thrown as an error.
+// "| ... |" tables, [text](url) links, and (new here) ![alt](url) images (notice-board-v1.0.prd.md
+// N-R16/C-3 — the notice editor's image upload feature needs somewhere to render the markdown it
+// produces; PRD §7.6/C-3 ③ calls this out explicitly as a required renderer extension, not
+// optional). Anything else (code blocks, blockquotes, raw HTML) is left as plain text — never
+// thrown as an error.
 import type { ReactNode } from 'react'
 
 function isSafeUrl(url: string): boolean {
   return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')
 }
 
+// notice-board-privacy-review.md §6.4 NB-R6 — links may point anywhere http(s)/relative (existing
+// isSafeUrl above), but an <img src> is a materially different risk: an external host embedded in
+// a notice body causes the reading admin/partner's browser to make a request (leaking IP/UA to a
+// third party we don't control) every time the notice renders, with no user action taken —
+// unlike a link, which requires an explicit click. Image src is therefore restricted to our own
+// Storage's public host, not "any https URL" — specifically the content-image bucket's public
+// object path (lib/content/stripImageMetadata.ts / uploadNoticeImageAction in
+// app/admin/(protected)/board/actions.ts are the only legitimate source of these URLs).
+function isSafeImageUrl(url: string): boolean {
+  if (!url.startsWith('https://')) return false // also rules out http:// (would be blocked as
+  // mixed content anyway once the app itself is served over https, per NB-R6) and any non-URL
+  // scheme.
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  if (!supabaseUrl) return false
+
+  let imageOrigin: string
+  let supabaseOrigin: string
+  try {
+    imageOrigin = new URL(url).origin
+    supabaseOrigin = new URL(supabaseUrl).origin
+  } catch {
+    return false
+  }
+  if (imageOrigin !== supabaseOrigin) return false
+
+  // Origin match alone would still accept a URL pointing at some OTHER bucket/endpoint on the
+  // same Supabase project (e.g. partner-doc, or an admin/auth endpoint) — narrow further to the
+  // exact public-object path this feature is allowed to embed.
+  return url.includes('/storage/v1/object/public/content-image/')
+}
+
 function renderInline(text: string): ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g)
+  // notice-board-privacy-review.md §6.4 NB-R6 "파싱 충돌 주의": the image alternative
+  // (`!\[...\]\(...\)`) is listed BEFORE the link alternative so an occurrence of `![alt](url)`
+  // is captured whole by the image branch — without it, split() matches `[alt](url)` (the link
+  // pattern) starting one character after the `!`, leaving a stray `!` in the output and
+  // rendering the image markdown as a clickable link instead of an image.
+  const parts = text.split(/(\*\*[^*]+\*\*|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\))/g)
   return parts.map((part, i) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={i}>{part.slice(2, -2)}</strong>
+    }
+    const imageMatch = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(part)
+    if (imageMatch) {
+      const [, alt, url] = imageMatch
+      // Falls back to the alt text (never the raw URL, never a broken <img>) for anything that
+      // isn't our own Storage's public content-image path — same "fail to plain text, never
+      // throw" stance as the existing link handling below.
+      if (!isSafeImageUrl(url)) return alt
+      // eslint-disable-next-line @next/next/no-img-element -- external Storage URL, not a local
+      // asset next/image can optimize; this mirrors the plain <a> handling just below.
+      return <img key={i} src={url} alt={alt} loading="lazy" className="mt-2 max-w-full rounded-input border border-neutral-200" />
     }
     const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part)
     if (linkMatch) {
