@@ -7,9 +7,13 @@ import type { ArticleRecord, ArticleTranslationRow } from './ArticleRow'
 import type { FaqRecord, FaqTranslationRow } from './FaqRow'
 
 async function loadContentItemsWithTranslations(supabase: SupabaseClient, contentType: string) {
+  // notice-board-v1.0.prd.md §2/screen-spec §2 — target_audience is only meaningful for
+  // content_type='notice' (null for case_study/faq), selected unconditionally here since this
+  // helper is shared by loadArticleRecords/loadFaqRecords and an extra null column costs
+  // nothing for the callers that ignore it.
   const { data: items, error: itemsError } = await supabase
     .from('content_item')
-    .select('id, content_key, sort_order, is_active')
+    .select('id, content_key, sort_order, is_active, target_audience')
     .eq('content_type', contentType)
     .order('sort_order')
 
@@ -32,10 +36,15 @@ export async function loadArticleRecords(
   const { items, translations, error } = await loadContentItemsWithTranslations(supabase, contentType)
 
   const records: ArticleRecord[] = items.map((item) => {
-    const t: Record<string, ArticleTranslationRow | null> = { en: null, ja: null }
+    // notice-board-v1.0.prd.md §7.5 G-2′ — this used to hardcode `{ en: null, ja: null }` and
+    // skip any other locale. case_study/faq only ever have en/ja rows so that was harmless for
+    // them, but a 'partner' notice is ko-only and a 'seepn_user' notice has ko/en/ja — hardcoding
+    // would silently drop the ko row (and any future zh row). Every content_translation row is
+    // now kept, keyed by its own locale; ArticleRow.tsx's `locales` prop (caller-supplied,
+    // per-content-type/per-audience) decides which of these keys actually get rendered.
+    const t: Record<string, ArticleTranslationRow | null> = {}
     for (const row of translations) {
       if (row.content_item_id !== item.id) continue
-      if (row.locale !== 'en' && row.locale !== 'ja') continue
       const body = row.body as { title?: string; excerpt?: string; body_markdown?: string }
       t[row.locale] = {
         title: body?.title ?? '',
@@ -53,6 +62,9 @@ export async function loadArticleRecords(
       sortOrder: item.sort_order,
       isActive: item.is_active,
       translations: t,
+      // null for case_study/faq (column is notice-only, PRD §7.2); 'partner' | 'seepn_user' for
+      // notice rows (DB CHECK guarantees non-null there, privacy review §5 NB-B5).
+      targetAudience: (item.target_audience ?? null) as ArticleRecord['targetAudience'],
     }
   })
 

@@ -127,14 +127,9 @@ export interface Dictionary {
     intro: string
   }
   // Design Ref: fkp-v0.2-phase5d-blog-case-faq.spec.md §7 — blog/case_study 공용 카피
-  // 구조(동일 템플릿이라 동일 키셋을 쓴다). ctaTitle/ctaButton은 상세 페이지 하단 CTA용.
-  blog: {
-    pageTitle: string
-    emptyState: string
-    backToList: string
-    ctaTitle: string
-    ctaButton: string
-  }
+  // 구조로 도입됐으나, blog는 notice-board-v1.0.prd.md §7.3에 따라 물리적으로 전환·폐지됐다
+  // (0건 게시글 확인 후 전환, 공지사항은 FKP 공개 사이트에 노출되지 않으므로 이 dictionary
+  // 자체가 필요 없다 — D-N0-1). case_study만 이 형태를 그대로 쓴다.
   caseStudies: {
     pageTitle: string
     emptyState: string
@@ -151,7 +146,6 @@ export interface Dictionary {
     contactEmail: string
     privacyLinkText: string
     termsLinkText: string
-    blogLinkText: string
     caseStudiesLinkText: string
     faqLinkText: string
   }

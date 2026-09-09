@@ -1,6 +1,8 @@
 // Design Ref: 콘텐츠관리(Phase 5-B/5-C) — 카테고리 마스터 데이터 + 랜딩페이지 마케팅 카피.
-// 블로그/사례/FAQ(Phase 5-D)는 대표 피드백(2026-08-27)에 따라 메뉴관리에서 새로 구성한
-// 게시판관리(board_management) > 블로그/사례/FAQ 메뉴로 이동했다(app/admin/(protected)/board/*).
+// 사례/FAQ(Phase 5-D)는 대표 피드백(2026-08-27)에 따라 메뉴관리에서 새로 구성한
+// 게시판관리(board_management) > 사례/FAQ 메뉴로 이동했다(app/admin/(protected)/board/*).
+// 블로그 메뉴는 notice-board-v1.0.prd.md(v3.0) §7.3에 따라 공지사항으로 물리적 전환됐다
+// (board/blog/ -> board/notice/, 게시글 0건 확인 후 전환이라 데이터 손실 없음).
 // 데이터 접근 권한(content_management RLS/RPC)은 메뉴 이동과 무관하게 그대로 공유한다.
 import { redirect } from 'next/navigation'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
@@ -82,7 +84,7 @@ export default async function ContentManagementPage() {
     <div>
       <p className="mt-1 admin-body-sm text-neutral-600">
         카테고리 마스터 데이터와 랜딩페이지 마케팅 카피를 관리합니다. 게시(published) 상태인 내용은 최대 1분(ISR) 이내
-        공개 사이트에 반영됩니다. 블로그/사례/FAQ는 좌측 게시판관리 메뉴로 이동했습니다.
+        공개 사이트에 반영됩니다. 공지사항/사례/FAQ는 좌측 게시판관리 메뉴로 이동했습니다.
       </p>
 
       {error && <p className="mt-4 admin-body-sm text-error">불러오지 못했습니다: {error.message}</p>}

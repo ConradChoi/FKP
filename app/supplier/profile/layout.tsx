@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { requireSupplierSession } from '@/lib/supplier/session'
 import { computeSubmissionGaps } from '@/lib/admin/partnerSubmissionGaps'
 import { tabsWithUnmetGaps } from '@/lib/supplier/tabGaps'
+import { getPublishedPartnerNotices } from '@/lib/content/getPublishedNotices'
 import { SupplierProfileShell } from '@/components/supplier/SupplierProfileShell'
 import { AuthShell } from '@/components/supplier/AuthShell'
 import { EnvelopeIcon } from '@/components/icons/SupplierIcons'
@@ -28,14 +29,18 @@ export default async function SupplierProfileLayout({ children }: { children: Re
     )
   }
 
-  const [{ count: bizCertCount }, { data: contact }] = await Promise.all([
+  const [{ count: bizCertCount }, { data: contact }, latestNotices] = await Promise.all([
     supabase
       .from('partner_document')
       .select('id', { count: 'exact', head: true })
       .eq('partner_id', partner.id)
       .eq('doc_type', 'business_registration_cert'),
     supabase.rpc('get_own_partner_contact'),
+    // notice-board-v1.0.prd.md §12 N-R18 / screen-spec §4.4 — "별도 함수 신설 불필요", same
+    // getPublishedPartnerNotices() the /supplier/notices list uses, with limit=1.
+    getPublishedPartnerNotices(1),
   ])
+  const latestNotice = latestNotices[0] ?? null
 
   const hasBizCertDocument = (bizCertCount ?? 0) > 0
   const hasContact = contact !== null
@@ -72,6 +77,7 @@ export default async function SupplierProfileLayout({ children }: { children: Re
       rejectionReason={partner.rejection_reason}
       gaps={gaps}
       unmetTabs={unmetTabs}
+      latestNotice={latestNotice}
     >
       {children}
     </SupplierProfileShell>

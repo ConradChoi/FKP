@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { SubmissionGapItem } from '@/lib/admin/partnerSubmissionGaps'
 import type { SupplierTabId } from '@/lib/supplier/tabGaps'
+import type { PublishedPartnerNoticeListItem } from '@/lib/content/getPublishedNotices'
 import { getSupplierBrowserClient } from '@/lib/supabase/supplierBrowserClient'
 import { VERIFICATION_STATE_LABELS } from '@/lib/admin/partnerLabels'
 import { AccountMenu } from './AccountMenu'
@@ -17,6 +18,7 @@ import { StatusBanner, verificationStateTone } from './StatusBanner'
 import { ConfirmActionModal } from './ConfirmActionModal'
 import { DirtyGuardProvider } from './DirtyGuard'
 import { SupplierFooter } from './SupplierFooter'
+import { NoticePreviewWidget } from './NoticePreviewWidget'
 
 export function SupplierProfileShell({
   displayName,
@@ -24,6 +26,11 @@ export function SupplierProfileShell({
   rejectionReason,
   gaps,
   unmetTabs,
+  // notice-board-v1.0.prd.md §12 N-R18 / notice-board.screen-spec.md §4.4 — fetched by the
+  // server-component caller (app/supplier/profile/layout.tsx) since this shell is a client
+  // component and can't call the (server-only, anon-role) getPublishedPartnerNotices() itself.
+  // null both when there are 0 published partner notices and (defensively) on any read failure.
+  latestNotice,
   children,
 }: {
   displayName: string
@@ -31,6 +38,7 @@ export function SupplierProfileShell({
   rejectionReason: string | null
   gaps: SubmissionGapItem[]
   unmetTabs: SupplierTabId[]
+  latestNotice: PublishedPartnerNoticeListItem | null
   children: React.ReactNode
 }) {
   const router = useRouter()
@@ -87,6 +95,8 @@ export function SupplierProfileShell({
               <p className="mt-1 text-label-caption">수정 후 아래 체크리스트에서 다시 제출할 수 있습니다.</p>
             )}
           </StatusBanner>
+
+          <NoticePreviewWidget notice={latestNotice} />
 
           <div className="mt-6">
             <ProfileTabs unmetTabs={unmetTabs} />

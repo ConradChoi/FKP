@@ -197,13 +197,6 @@ export const ja: Dictionary = {
   requestPage: {
     intro: '韓国で探しているものをお知らせください。最適なパートナーとのマッチングをサポートします。',
   },
-  blog: {
-    pageTitle: 'ブログ',
-    emptyState: 'まだ投稿がありません。近日公開予定です。',
-    backToList: '← ブログ一覧に戻る',
-    ctaTitle: '韓国のパートナーをお探しですか？',
-    ctaButton: 'リクエストを始める',
-  },
   caseStudies: {
     pageTitle: '導入事例',
     emptyState: 'まだ事例がありません。近日公開予定です。',
@@ -220,7 +213,6 @@ export const ja: Dictionary = {
     contactEmail: 'jhc@ylia.io',
     privacyLinkText: 'プライバシーポリシー',
     termsLinkText: '利用規約',
-    blogLinkText: 'ブログ',
     caseStudiesLinkText: '導入事例',
     faqLinkText: 'よくある質問',
   },

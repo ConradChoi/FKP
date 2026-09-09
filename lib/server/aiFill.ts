@@ -33,6 +33,18 @@ export const AI_FILL_MAX_FIELD_LENGTH = 20000
 //     status='draft'+translation_source='ai', which (if the source row was published) demotes
 //     live content to draft — the exact accident class §4 E-4 exists to prevent, just reached
 //     through a different door. validateTargetLocale() below closes it for all 5 actions.
+//   - 'NOTICE_NOT_ALLOWED' — notice-board-v1.0.prd.md (v3.0 Final) §7.5 G-6 / screen-spec
+//     §3.6 / §6 N-E3: the blog->notice physical transition (see contentTypes.ts) reuses
+//     ArticleRow/aiFillArticleTranslationAction, and that action currently only rejects
+//     content_type === 'case_study'. Left unguarded, a 'notice' item would pass straight
+//     through: `partner` notices are ko-only (nothing to translate — the button showing up
+//     at all would be a bug) and `seepn_user` notices, while they DO have real translation
+//     targets (en/ja), are explicitly out of scope for AI-fill until W-N6 is picked up
+//     (Google Translate credentials aren't configured yet, and the per-audience UI branching
+//     this needs hasn't been built). Deliberately a DIFFERENT code from
+//     CASE_STUDY_NOT_ALLOWED (not reused) — case_study is permanently excluded, notice is a
+//     "not yet" exclusion that a future seepn_user AI-fill feature will need to distinguish
+//     from case_study's permanent one.
 export type AiFillErrorCode =
   | 'EMPTY_SOURCE'
   | 'SOURCE_TOO_LONG'
@@ -42,6 +54,7 @@ export type AiFillErrorCode =
   | 'ACCESS_DENIED'
   | 'CONFIG_ERROR'
   | 'CASE_STUDY_NOT_ALLOWED'
+  | 'NOTICE_NOT_ALLOWED'
   | 'SAVE_FAILED'
   | 'INVALID_TARGET_LOCALE'
 

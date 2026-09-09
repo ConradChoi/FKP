@@ -23,6 +23,18 @@ export interface PublishedListItem {
 }
 
 export async function getPublishedContentList(contentType: ArticleContentType, locale: Locale): Promise<PublishedListItem[]> {
+  // notice-board-privacy-review.md §4.2 NB-B6 — this query has no target_audience filter at
+  // all, so once 'notice' becomes a valid ArticleContentType (frontend-developer's later
+  // blog->notice cleanup round, lib/content/contentTypes.ts), a call like
+  // getPublishedContentList('notice', locale) would silently return ALL notices (partner +
+  // seepn_user mixed together) — the exact "우회 경로" the privacy review calls out. Guarded
+  // here now, ahead of that type change, rather than relying on every future call site to
+  // remember not to do this. Partner notice reads MUST go through
+  // lib/content/getPublishedNotices.ts, which filters target_audience explicitly. The cast is
+  // required because ArticleContentType doesn't include 'notice' yet — this check stays
+  // correct (and starts actually firing) the moment it does.
+  if ((contentType as string) === 'notice') return []
+
   const supabase = getSupabaseServerClient()
   if (!supabase) return []
 
@@ -61,6 +73,11 @@ export async function getPublishedContentBySlug(
   slug: string,
   locale: Locale,
 ): Promise<PublishedDetailItem | null> {
+  // See getPublishedContentList's identical guard above (NB-B6) — same bypass risk applies to
+  // the detail path (would leak a seepn_user notice's body to anyone who knows/guesses the
+  // slug, defeating N-E8's 404 requirement).
+  if ((contentType as string) === 'notice') return null
+
   const supabase = getSupabaseServerClient()
   if (!supabase) return null
 

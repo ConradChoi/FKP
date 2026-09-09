@@ -106,6 +106,8 @@ export function getAiFillErrorMessage(failure: AiFillFailure, fieldLabels: Recor
       return '번역 기능에 일시적인 문제가 있어 사용할 수 없습니다. 개발팀에 문의해주세요.'
     case 'CASE_STUDY_NOT_ALLOWED':
       return '사례 콘텐츠는 AI 번역 대상이 아닙니다.'
+    case 'NOTICE_NOT_ALLOWED':
+      return '공지사항은 AI 번역 대상이 아닙니다.'
     case 'INVALID_TARGET_LOCALE':
       return '원본 로케일은 번역 대상으로 지정할 수 없습니다.'
     case 'SAVE_FAILED':

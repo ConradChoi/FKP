@@ -22,6 +22,13 @@
 -- orthogonal manual workflow axis; publish/unpublish never implies "in sync" or vice versa.
 --
 -- STATUS: not yet applied.
+--
+-- UPDATE (2026-09-08, notice-board-v1.0.prd.md §7.3 D-N0-3/D-N0-7): 'blog' was physically
+-- replaced by 'notice' in content_item.content_type's CHECK below — the blog board is
+-- retired (0 published posts existed at the time), and its table/RPC/RLS infrastructure is
+-- reused as the notice board instead. See supabase/migrations/20260908110000_notice_board_core.sql
+-- for the target_audience column this introduces and the defensive migration path for any
+-- environment where this file had already been applied with the old 'blog'-allowing CHECK.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -250,7 +257,7 @@ alter table public.requests
 
 create table if not exists public.content_item (
   id uuid primary key default gen_random_uuid(),
-  content_type text not null check (content_type in ('landing_copy', 'blog', 'case_study', 'faq')),
+  content_type text not null check (content_type in ('landing_copy', 'notice', 'case_study', 'faq')),
   content_key text not null unique check (content_key ~ '^[a-z][a-z0-9_.-]{1,149}$'),
   source_locale text not null default 'en' check (source_locale in ('en', 'ja', 'ko', 'zh')),
   sort_order integer not null default 0,

@@ -13,6 +13,13 @@ import Link from 'next/link'
 // REQUIRED-TO-EXIST navigation path reachable in 2 clicks from every screen (P1 DoD gate,
 // privacy review §9) — it does not resolve the open "who is CPO / what phone number" question
 // from ceo-decisions.md §3 Q-A/Q-B, which is a content decision, not a routing one.
+//
+// notice-board-v1.0.prd.md (v3.0 Final) §12 / notice-board.screen-spec.md §4.1 — "공지사항"
+// added as the 4th link (appended, not inserted, so the existing 3 links keep their order/click
+// position for anyone already used to this footer). Because this component renders in BOTH the
+// unauthenticated card shell (AuthShell.tsx) and the authenticated profile shell
+// (SupplierProfileShell.tsx), this one edit alone satisfies N-R8 ("모든 화면에서 2클릭 내
+// 도달") for every /supplier/* screen without touching either shell directly.
 export function SupplierFooter() {
   return (
     <footer className="border-t border-neutral-200 py-6">
@@ -27,6 +34,10 @@ export function SupplierFooter() {
         <span aria-hidden="true">·</span>
         <Link href="/supplier/support" className="hover:text-neutral-700 hover:underline">
           고객센터
+        </Link>
+        <span aria-hidden="true">·</span>
+        <Link href="/supplier/notices" className="hover:text-neutral-700 hover:underline">
+          공지사항
         </Link>
       </div>
     </footer>
