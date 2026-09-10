@@ -30,3 +30,10 @@ npm-debug.log*
 
 # supabase CLI local cache
 /supabase/.temp/
+
+# supabase/tests/ is a local Docker-based regression harness with no secrets
+# of its own today, but keep these gitignored as a standing safety net in
+# case a local-only dotfile (e.g. a connection string for some future
+# variant of the harness) ever ends up here.
+/supabase/tests/.env
+/supabase/tests/.env.local
