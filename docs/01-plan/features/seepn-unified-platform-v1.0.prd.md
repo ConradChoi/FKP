@@ -875,19 +875,22 @@ D-5의 "공지/FAQ는 이식이 아니라 매핑해서 흡수" 지시에 대한 
 - [ ] privacy-security-officer 점검 + qa-reviewer 리뷰 통과
 
 **P5a — SEEPN 바이어 계정 + 파트너 공개 목록/상세** *(2026-09-09 신설, D-12)*
-- [ ] privacy-security-officer **사전** 검토 통과 — **신규 공개 노출면**이므로 필수. 최소 확인 항목: ① 공개 목록/상세에 노출되는 필드 화이트리스트(담당자 PII·사업자등록번호는 **비노출**), ② **사업자등록번호가 공개 검색 대상에서 제외됨**(B-9c′), ③ 바이어 principal의 RLS가 `requests`/`partner_contact`/`private.*`에 절대 닿지 않음(PR-7/PR-8과 동일 논리를 세 번째 principal_kind에 적용), ④ 바이어 계정의 동의·보관·탈퇴 기준, ⑤ **운영자 문의 본문의 PII 유입 처리**(INQ-4 — 자유 텍스트에 문의자가 PII를 적을 수 있음. 목록 마스킹·보관·파기 기준)
-- [ ] `auth_principal.principal_kind` 세 번째 값 추가가 **기존 admin/partner 권한 판정(`private.is_active_admin()` 등)을 오염시키지 않음**을 회귀 테스트로 증명 (PR-8 승계)
-- [ ] 목록에 `public_listing_state='on'` **AND** `verification_state='verified'` 건만 노출됨을 테스트로 증명 (B-14)
-- [ ] 카테고리·지역·언어·해외경험·버티컬 필터 + 회사명 검색 + 정렬 3종 동작 (B-9′, B-9a′, B-12c)
-- [ ] 파트너 0곳 카테고리가 공개 필터에 노출되지 않음 (B-13)
-- [ ] 비로그인 상태로 상세 URL 직접 접근 시 차단/로그인 유도 (D-3′)
-- [ ] 관심등록 추가/해제 및 본인 것만 조회 가능(RLS) (B-12a)
-- [ ] **운영자 문의**(B-18) 생성 → Admin 목록/상세 확인 → 상태 전이 전 구간 동작. 문의자 연락처를 **폼에서 받지 않고 계정에서 가져옴**(INQ-3), 생성·열람이 `audit_log`에 남음(INQ-7)
-- [ ] 비로그인 → 상세/관심등록 시도 시 **가입 유도 후 원래 위치로 복귀**(B-17, SP-14)
-- [ ] ~~**릴리즈 게이트**: 공개 노출 가능 파트너 ≥ 50곳 확보 전에는 공개 오픈하지 않음~~ → **폐기 (D-13②)**
-- [ ] **공개 파트너 0곳 상태에서도 목록/상세 화면이 정상 배포·동작**하며, **빈 목록 화면(empty state)이 설계대로 표시**됨 (D-13②, SP-11)
-- [ ] **관리자가 파트너별로 공개를 켜고 끌 수 있음**을 확인 — **신규 개발 아님, 기존 `partner_set_public_listing` + `/admin/partners/[id]` 동작 회귀 확인**. 특히 **동의 없는 파트너를 관리자가 켤 수 없음**(`public_listing_consent_missing`)과 **끄기는 조건 없이 가능**함을 함께 검증 (§4.3.1, PC-6)
-- [ ] qa-reviewer 리뷰 통과
+
+> **[2026-09-10 회귀검증]** 아래 체크박스는 qa-reviewer가 코드를 직접 읽고 재검증한 결과다(자동화 테스트가 아니라 정적 코드 검토 — 그 이유는 아래 항목 2·3의 단서 참조). 근거 파일: `docs/03-security/seepn-buyer-web-p5a-privacy-review.md`, `supabase/migrations/20260910100000_seepn_buyer_web_p5a.sql`, `supabase/migrations/20260910170000_dormant_buyer_purge_policy_update.sql`, `app/seepn/partners/**`, `components/seepn/**`.
+
+- [x] privacy-security-officer **사전** 검토 통과 — **신규 공개 노출면**이므로 필수. 최소 확인 항목: ① 공개 목록/상세에 노출되는 필드 화이트리스트(담당자 PII·사업자등록번호는 **비노출**), ② **사업자등록번호가 공개 검색 대상에서 제외됨**(B-9c′), ③ 바이어 principal의 RLS가 `requests`/`partner_contact`/`private.*`에 절대 닿지 않음(PR-7/PR-8과 동일 논리를 세 번째 principal_kind에 적용), ④ 바이어 계정의 동의·보관·탈퇴 기준, ⑤ **운영자 문의 본문의 PII 유입 처리**(INQ-4 — 자유 텍스트에 문의자가 PII를 적을 수 있음. 목록 마스킹·보관·파기 기준) — ①~⑤ 전부 `seepn-buyer-web-p5a-privacy-review.md` 및 실제 코드로 확인됨. **단서**: 리뷰 문서·마이그레이션·앱 코드가 전부 동일 커밋(`21f288e`)에 함께 들어있어, "사전(빌드 전)" 검토였는지는 git 이력만으로는 증명 불가 — 시점 순서는 확인 불가로 남긴다. ④의 탈퇴 기준은 이후 `20260910170000`으로 재변경(6개월 유예 + 데이터 보존, P-19 회신 대기 중)됐으므로 참조 시 최신본 기준으로 볼 것
+- [x] `auth_principal.principal_kind` 세 번째 값 추가가 **기존 admin/partner 권한 판정(`private.is_active_admin()` 등)을 오염시키지 않음** — `private.is_active_admin()`(`20260825120000` L474-487)은 `admin_user`만, `private.is_active_partner()`(`20260829130000` L490-505)는 `partner_account`만 조회해 buyer 추가로 오판정될 경로 없음을 **코드 검토로 확인**. **단서 — 원문의 "회귀 테스트로 증명" 요건은 미충족**: 이 저장소에는 이 기능에 대한 자동화 테스트가 0건이다(`tests/e2e/`는 FKP 랜딩페이지만 커버). 회귀 안전망 부재는 별도 후속 과제로 남긴다
+- [x] 목록에 `public_listing_state='on'` **AND** `verification_state='verified'` 건만 노출됨 — `20260910100000` L752-764 `private.partner_public_base`의 WHERE절에 두 조건 + `status<>'withdrawn'` + 최신 `public_listing` consent `granted=true`까지 3계층 게이트가 한 곳에 구현되어 하위 뷰들이 전부 이를 참조. **단서 — 위와 동일하게 "테스트로 증명" 요건은 자동화 테스트 부재로 미충족**, 코드 검토로만 확인 (B-14)
+- [x] 카테고리·지역·언어·해외경험·버티컬 필터 + 회사명 검색 + ~~정렬 3종~~ **정렬 2종** 동작 (B-9′, B-9a′, B-12c) — **[문서 오류 정정, 2026-09-10]** 5개 필터·검색은 `app/seepn/partners/page.tsx` L71-95에 전부 구현됨. 원문은 "정렬 3종"이나 실제 구현은 **최신순/회사명순 2종뿐**(`PartnerFilters.tsx` L181-184) — 이는 버그가 아니라 privacy review BP-12(§2.6)의 의도적 축소(완성도순은 파트너 동의 고지 갱신 선행 필요)다. DoD 문구를 실제 스코프에 맞춰 "정렬 2종"으로 정정
+- [x] 파트너 0곳 카테고리가 공개 필터에 노출되지 않음 — `PartnerFilters.tsx` L39-47(L1 count=0 disabled), L82-84(L2/L3 count=0이면 렌더 안 함) (B-13)
+- [x] 비로그인 상태로 상세 URL 직접 접근 시 차단/로그인 유도 — DB: `partner_detail_buyer` 뷰가 `is_active_buyer()` 미충족 시 0행 반환(L805, L816-817) + 앱: `redirectToLoginIfNoBuyerSession`이 `/seepn/login?redirect=...`로 리다이렉트(`app/seepn/partners/[id]/page.tsx` L26) — 이중 방어 확인 (D-3′)
+- [x] 관심등록 추가/해제 및 본인 것만 조회 가능(RLS) — `buyer_bookmark` RLS 정책 3개(L922-932)가 전부 `is_active_buyer() AND buyer_account_id = current_buyer_id()`, UPDATE grant 자체가 없음 (B-12a)
+- [x] **운영자 문의**(B-18) 생성 → Admin 목록/상세 확인 → 상태 전이 전 구간 동작. 문의자 연락처를 **폼에서 받지 않고 계정에서 가져옴**(INQ-3), 생성·열람이 `audit_log`에 남음(INQ-7) — `create_seepn_inquiry(p_partner_id, p_body)`는 연락처 파라미터 없음(L1024), 생성 시 `seepn_inquiry.create`(L1078-1082)·열람 시 `admin_seepn_inquiry.view`(L1200-1203, 감사 실패 시 롤백) 감사 확인, 상태 전이·담당자 배정 함수까지 전 구간 동작 확인
+- [x] 비로그인 → 상세/관심등록 시도 시 **가입 유도 후 원래 위치로 복귀**(B-17, SP-14) — `PartnerListClient.tsx` L71-77이 `?action=bookmark&partnerId=`를 붙여 로그인으로 이동, `login/page.tsx` L94-96이 `redirect` 파라미터로 복귀 후 L44-52가 찜을 자동 재실행. 상세 페이지도 동일 패턴(`DetailBookmarkButton.tsx` L20-28)
+- [ ] ~~**릴리즈 게이트**: 공개 노출 가능 파트너 ≥ 50곳 확보 전에는 공개 오픈하지 않음~~ → **폐기 (D-13②)** — 검증 대상 아님
+- [x] **공개 파트너 0곳 상태에서도 목록/상세 화면이 정상 배포·동작**하며, **빈 목록 화면(empty state)이 설계대로 표시**됨 — `app/seepn/partners/page.tsx` L129, L199-210 `EmptyAll()`이 "지금 SEEPN에 파트너를 모으고 있습니다" + 가입 유도 링크로 렌더(설계 의도와 일치, "준비 중" 문구 아님) (D-13②, SP-11)
+- [x] **관리자가 파트너별로 공개를 켜고 끌 수 있음**을 확인 — **신규 개발 아님, 기존 `partner_set_public_listing`(P1에서 이미 구현) + `/admin/partners/[id]` 동작 회귀 확인**. ON 시 verified+consent+증빙 3조건 체크(`public_listing_consent_missing` raise), OFF는 무조건 허용(`20260829140000` L1451-1527, 주석 "A1-R9") — P5a가 우회 경로를 추가하지 않았음도 확인 (§4.3.1, PC-6)
+- [x] qa-reviewer 리뷰 통과 — 2026-09-10 재검증 완료(본 회귀검증 자체). **개선 권고(주요)**: SEEPN 바이어 플로우(뷰 권한·RLS·RPC 레이트리밋·로그인 게이트)에 대한 자동화 회귀 테스트가 전무하다 — 이후 이 뷰/함수를 수정할 때 잡아줄 안전망이 없다는 뜻이므로 별도 백로그로 관리할 것
 
 **P3 / P5b / P6 / P7 / P8**: 각 Phase 착수 시 별도 PRD 또는 본 문서 개정으로 DoD 확정.
 
