@@ -174,7 +174,8 @@ function SignupContent() {
               <span>[선택] 마케팅 정보 수신 동의</span>
             </label>
             <p className="pl-6 text-label-caption text-neutral-400">
-              이메일로 SEEPN의 소식을 보내드립니다. 동의하지 않으셔도 서비스 이용에 제한이 없습니다.
+              이메일로 SEEPN의 소식을 보내드립니다. 동의하지 않으셔도 서비스 이용에 제한이 없습니다. 가입 후
+              계정 메뉴 &gt; 설정 화면에서 언제든지 철회하실 수 있습니다.
             </p>
           </div>
 

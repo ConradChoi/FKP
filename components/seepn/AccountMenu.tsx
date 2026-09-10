@@ -6,6 +6,7 @@
 // Flagged in the completion report as a deliberate small addition beyond the screen-spec's
 // enumerated list, for the same reason app/supplier/profile/settings exists for partners.
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getBuyerBrowserClient } from '@/lib/supabase/buyerBrowserClient'
 import { destructiveButtonClass, secondaryButtonClass } from '@/components/RequestForm/styles'
@@ -57,6 +58,16 @@ export function AccountMenu({ displayName }: { displayName: string }) {
       </button>
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-40 rounded-card border border-neutral-200 bg-neutral-0 p-2 shadow-lg">
+          {/* Design Ref: seepn-buyer-marketing-consent-settings.screen-spec.md §6 — "설정"은
+              계정 성격 메뉴(로그아웃/탈퇴)와 같은 그룹에 두되, 파괴적 동작(탈퇴)과는 시각적으로
+              분리한다. */}
+          <Link
+            href="/seepn/my/settings"
+            onClick={() => setOpen(false)}
+            className="block w-full rounded-input px-2 py-1.5 text-left text-body-sm text-neutral-700 hover:bg-neutral-50"
+          >
+            설정
+          </Link>
           <button type="button" onClick={handleLogout} className="block w-full rounded-input px-2 py-1.5 text-left text-body-sm text-neutral-700 hover:bg-neutral-50">
             로그아웃
           </button>

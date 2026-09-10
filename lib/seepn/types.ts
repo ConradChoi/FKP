@@ -69,6 +69,20 @@ export interface PartnerDetailBuyerRow {
   created_at: string
 }
 
+// Design Ref: lib/supplier/types.ts's ConsentRecord/ConsentsByType (same pattern, buyer
+// domain copy per docs/02-design/features/seepn-buyer-marketing-consent-settings.screen-spec.md
+// §8) — get_own_buyer_consents() omits a key entirely (never present with a null value) when
+// there is no consent/withdrawal history for that type, so the frontend can tell "이력 없음"
+// apart from "명시적으로 거부함".
+export interface ConsentRecord {
+  granted: boolean
+  collected_at: string
+  document_version: string | null
+}
+
+// `public_listing` is a partner-only concept, deliberately excluded here.
+export type BuyerConsentsByType = Partial<Record<'terms' | 'privacy' | 'marketing', ConsentRecord>>
+
 export interface SeepnInquiryRow {
   id: string
   partner_id: string
