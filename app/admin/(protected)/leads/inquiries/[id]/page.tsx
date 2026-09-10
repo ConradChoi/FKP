@@ -4,6 +4,8 @@
 // 마세요' 운영 가이드 문구를 노출". get_seepn_inquiry_detail() itself is audited on every call
 // (INQ-7 — opening the detail IS the body-reveal event), so this page must call it exactly once
 // per navigation, not per re-render (a Server Component's render body already satisfies that).
+// GAP-C1 (2026-09-10, 20260910180000): "참조 파트너" is now a list (1..5 partners), each
+// rendered as its own link, instead of a single partner_id link.
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
@@ -45,11 +47,13 @@ export default async function AdminSeepnInquiryDetailPage({ params }: { params: 
 
       <dl className="mt-4 grid grid-cols-2 gap-4 rounded-card border border-neutral-200 bg-neutral-0 p-4 admin-body-sm">
         <div>
-          <dt className="admin-label-sm text-neutral-500">참조 파트너</dt>
-          <dd>
-            <Link href={`/admin/partners/${inquiry.partner_id}`} className="text-primary-600 hover:underline">
-              {inquiry.partner_company_name_ko ?? '(회사명 미공개)'}
-            </Link>
+          <dt className="admin-label-sm text-neutral-500">참조 파트너 ({inquiry.partners.length}건)</dt>
+          <dd className="flex flex-col gap-1">
+            {inquiry.partners.map((p) => (
+              <Link key={p.id} href={`/admin/partners/${p.id}`} className="text-primary-600 hover:underline">
+                {p.company_name_ko ?? '(회사명 미공개)'}
+              </Link>
+            ))}
           </dd>
         </div>
         <div>

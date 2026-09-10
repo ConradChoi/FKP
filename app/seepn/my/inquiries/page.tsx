@@ -3,6 +3,10 @@
 // public.seepn_inquiry (seepn_inquiry_self_select RLS already scopes to the caller's own rows —
 // no RPC needed for the buyer's own read path, unlike the Admin side which has no SELECT policy
 // at all and must go through admin_list_seepn_inquiries()/get_seepn_inquiry_detail()).
+// GAP-C1 (2026-09-10, 20260910180000): referenced partner(s) now live in the
+// public.seepn_inquiry_partner join table (1..5 per inquiry), not a partner_id column on
+// seepn_inquiry itself. seepn_inquiry_partner_self_select RLS mirrors seepn_inquiry_self_select
+// (own inquiries' rows only) — still no RPC needed for this read path.
 import Link from 'next/link'
 import { requireBuyerSession } from '@/lib/seepn/session'
 import { INQUIRY_STATUS_LABELS } from '@/lib/seepn/partnerLabels'
@@ -11,7 +15,6 @@ export const dynamic = 'force-dynamic'
 
 interface InquiryListRow {
   id: string
-  partner_id: string
   body: string
   status: 'new' | 'in_progress' | 'closed'
   created_at: string
@@ -22,19 +25,36 @@ export default async function SeepnInquiriesPage() {
 
   const { data: inquiries } = await session.supabase
     .from('seepn_inquiry')
-    .select('id, partner_id, body, status, created_at')
+    .select('id, body, status, created_at')
     .order('created_at', { ascending: false })
 
   const rows = (inquiries ?? []) as InquiryListRow[]
-  const partnerIds = Array.from(new Set(rows.map((r) => r.partner_id)))
+  const inquiryIds = rows.map((r) => r.id)
 
-  let nameById = new Map<string, string>()
-  if (partnerIds.length > 0) {
-    const { data: partners } = await session.supabase
-      .from('partner_list_public')
-      .select('id, company_name_ko')
-      .in('id', partnerIds)
-    nameById = new Map((partners ?? []).map((p: { id: string; company_name_ko: string | null }) => [p.id, p.company_name_ko ?? '(회사명 미공개)']))
+  let partnerNamesByInquiry = new Map<string, string[]>()
+  if (inquiryIds.length > 0) {
+    const { data: links } = await session.supabase
+      .from('seepn_inquiry_partner')
+      .select('inquiry_id, partner_id')
+      .in('inquiry_id', inquiryIds)
+    const linkRows = (links ?? []) as { inquiry_id: string; partner_id: string }[]
+
+    const partnerIds = Array.from(new Set(linkRows.map((l) => l.partner_id)))
+    let nameById = new Map<string, string>()
+    if (partnerIds.length > 0) {
+      const { data: partners } = await session.supabase
+        .from('partner_list_public')
+        .select('id, company_name_ko')
+        .in('id', partnerIds)
+      nameById = new Map((partners ?? []).map((p: { id: string; company_name_ko: string | null }) => [p.id, p.company_name_ko ?? '(회사명 미공개)']))
+    }
+
+    for (const link of linkRows) {
+      const name = nameById.get(link.partner_id) ?? '(비공개 파트너)'
+      const existing = partnerNamesByInquiry.get(link.inquiry_id) ?? []
+      existing.push(name)
+      partnerNamesByInquiry.set(link.inquiry_id, existing)
+    }
   }
 
   return (
@@ -53,7 +73,9 @@ export default async function SeepnInquiriesPage() {
           {rows.map((r) => (
             <div key={r.id} className="rounded-card border border-neutral-200 bg-neutral-0 p-4">
               <div className="flex items-center justify-between">
-                <p className="text-body-sm font-medium text-neutral-900">{nameById.get(r.partner_id) ?? '(비공개 파트너)'}</p>
+                <p className="text-body-sm font-medium text-neutral-900">
+                  {(partnerNamesByInquiry.get(r.id) ?? []).join(', ') || '(비공개 파트너)'}
+                </p>
                 <span className="rounded-sm bg-neutral-100 px-2 py-0.5 text-label-caption text-neutral-600">
                   {INQUIRY_STATUS_LABELS[r.status] ?? r.status}
                 </span>

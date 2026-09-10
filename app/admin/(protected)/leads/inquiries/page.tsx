@@ -3,6 +3,10 @@
 // "목록에 본문 미리보기 없음(기본값 채택)" — enforced structurally: admin_list_seepn_inquiries()'s
 // return shape has NO body column at all (see its comment in the migration), so there is no way
 // for this page to render a preview even by mistake.
+// GAP-C1 (2026-09-10, 20260910180000): a single partner column was replaced by `partners`
+// (1..5 referenced partners) — rendered here as "{first partner} 외 N건", full list only on
+// the detail page. This is intentionally minimal (scope: backend-led schema change, not a P5b
+// comparison-flow UI pass — that is a separate frontend-developer task).
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSupabaseAuthServerClient } from '@/lib/supabase/serverAuthClient'
@@ -112,7 +116,8 @@ export default async function AdminSeepnInquiriesPage({
               <tr key={row.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
                 <td className="px-4 py-3 admin-body">
                   <Link href={`/admin/leads/inquiries/${row.id}`} className="text-primary-600 hover:underline">
-                    {row.partner_company_name_ko ?? '(회사명 미공개)'}
+                    {(row.partners?.[0]?.company_name_ko ?? '(회사명 미공개)') +
+                      (row.partners && row.partners.length > 1 ? ` 외 ${row.partners.length - 1}건` : '')}
                   </Link>
                 </td>
                 <td className="px-4 py-3 admin-body-sm text-neutral-600">{row.buyer_display_name_masked}</td>

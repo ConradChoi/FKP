@@ -83,9 +83,12 @@ export interface ConsentRecord {
 // `public_listing` is a partner-only concept, deliberately excluded here.
 export type BuyerConsentsByType = Partial<Record<'terms' | 'privacy' | 'marketing', ConsentRecord>>
 
+// GAP-C1 (2026-09-10, 20260910180000): public.seepn_inquiry.partner_id was dropped —
+// referenced partners now live in the public.seepn_inquiry_partner join table (1..5 per
+// inquiry). This type is currently unused anywhere in the codebase; kept as the base row
+// shape sans partner reference, matching the actual table.
 export interface SeepnInquiryRow {
   id: string
-  partner_id: string
   body: string
   status: 'new' | 'in_progress' | 'closed'
   created_at: string
@@ -94,10 +97,16 @@ export interface SeepnInquiryRow {
 
 // admin_list_seepn_inquiries() RPC return shape — NO body column, by design
 // (privacy review §5.3(d): list must never preview inquiry body).
+// GAP-C1 (2026-09-10, 20260910180000): a single partner_id/partner_company_name_ko pair was
+// replaced by a `partners` array (1..5 referenced partners per inquiry).
+export interface AdminSeepnInquiryPartner {
+  id: string
+  company_name_ko: string | null
+}
+
 export interface AdminSeepnInquiryListRow {
   id: string
-  partner_id: string
-  partner_company_name_ko: string | null
+  partners: AdminSeepnInquiryPartner[] | null
   buyer_display_name_masked: string
   status: 'new' | 'in_progress' | 'closed'
   assigned_admin_id: string | null
@@ -108,8 +117,7 @@ export interface AdminSeepnInquiryListRow {
 // get_seepn_inquiry_detail() RPC return shape — body IS present here (detail-only exposure).
 export interface AdminSeepnInquiryDetail {
   id: string
-  partner_id: string
-  partner_company_name_ko: string | null
+  partners: AdminSeepnInquiryPartner[]
   buyer_display_name: string
   body: string
   status: 'new' | 'in_progress' | 'closed'

@@ -1,9 +1,11 @@
 'use client'
 
-// Design Ref: screen-spec §7.2 (BY-11) + §7.4 (create_seepn_inquiry contract: exactly
-// {p_partner_id, p_body}) + privacy review §5.3(c)/(g) — the exact warning caption from
-// CapabilityForm.tsx L316 is reused verbatim ("같은 위험에 다른 문구를 쓰지 않는다"), the
-// rate_limited error message never reveals the numeric threshold or remaining wait time.
+// Design Ref: screen-spec §7.2 (BY-11) + §7.4 (create_seepn_inquiry contract, revised
+// 2026-09-10 GAP-C1: {p_partner_ids: uuid[1..5], p_body} — this single-partner page passes
+// a 1-element array, reproducing the original P5a behaviour) + privacy review §5.3(c)/(g) —
+// the exact warning caption from CapabilityForm.tsx L316 is reused verbatim ("같은 위험에
+// 다른 문구를 쓰지 않는다"), the rate_limited error message never reveals the numeric
+// threshold or remaining wait time.
 import { useState } from 'react'
 import Link from 'next/link'
 import { getBuyerBrowserClient } from '@/lib/supabase/buyerBrowserClient'
@@ -13,6 +15,10 @@ import { CheckCircleIcon } from '@/components/icons/SeepnIcons'
 const MIN_LENGTH = 20
 const MAX_LENGTH = 2000
 
+// TODO(P5b): create_seepn_inquiry now also raises invalid_partner_count/duplicate_partner_ids
+// (20260910180000, GAP-C1) — unreachable from this form since it always submits a single-element
+// array, but the P5b multi-partner comparison-inquiry form MUST add cases for both before reusing
+// this function (qa-reviewer, 2026-09-10).
 function errorMessage(code: string | undefined): string {
   switch (code) {
     case 'invalid_body_length':
@@ -47,7 +53,7 @@ export function InquiryForm({ partnerId, replyEmail }: { partnerId: string; repl
     setSubmitting(true)
     const supabase = getBuyerBrowserClient()
     const { error: rpcError } = await supabase.rpc('create_seepn_inquiry', {
-      p_partner_id: partnerId,
+      p_partner_ids: [partnerId],
       p_body: trimmed,
     })
     setSubmitting(false)

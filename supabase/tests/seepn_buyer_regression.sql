@@ -32,6 +32,10 @@
 --   f. purge_dormant_buyer_accounts() — 6-month grace period, data preserved
 --   g. purge_expired_audit_log() — permission-related actions held
 --      indefinitely, unrelated actions purged after 2 years
+--   h. (added 2026-09-10, 20260910180000 GAP-C1) create_seepn_inquiry(uuid[], text)
+--      multi-partner behaviour — 1..5 partners inserted into
+--      seepn_inquiry_partner, >5 rejected, duplicate partner ids rejected,
+--      a non-publicly-listed partner id rejected (partner_not_found)
 --
 -- See this directory's README.md for when this file must be updated.
 -- =============================================================================
@@ -358,9 +362,13 @@ $$;
 insert into public.buyer_bookmark (buyer_account_id, partner_id) values
   ('11111111-1111-1111-1111-111111111a04', '44444444-4444-4444-4444-444444444405');
 
-insert into public.seepn_inquiry (buyer_account_id, partner_id, body, status) values
-  ('11111111-1111-1111-1111-111111111a04', '44444444-4444-4444-4444-444444444405',
+-- 20260910180000 GAP-C1: seepn_inquiry no longer has a partner_id column —
+-- referenced partner(s) go in the seepn_inquiry_partner join table.
+insert into public.seepn_inquiry (id, buyer_account_id, body, status) values
+  ('55555555-5555-5555-5555-555555555f01', '11111111-1111-1111-1111-111111111a04',
    'Regression-test inquiry body — must survive dormant auto-withdrawal untouched.', 'new');
+insert into public.seepn_inquiry_partner (inquiry_id, partner_id) values
+  ('55555555-5555-5555-5555-555555555f01', '44444444-4444-4444-4444-444444444405');
 
 select private.purge_dormant_buyer_accounts();
 
@@ -403,6 +411,147 @@ select regtest.assert(
 select regtest.assert(
   (select count(*) from public.audit_log where session_id = 'regtest-g-login-purge') = 0,
   'g2: a 3-year-old, unrelated auth.login_success row IS deleted by purge_expired_audit_log() (normal 2-year window)');
+
+
+-- =============================================================================
+-- §h. create_seepn_inquiry(uuid[], text) multi-partner behaviour
+--     (added 2026-09-10, 20260910180000, GAP-C1)
+-- =============================================================================
+
+-- 5 more fully-satisfied (verified/on/consented) partners, so combinations of
+-- 3 and 6 distinct valid partner ids are available without reusing case5.
+insert into public.partner (id, intake_source, verification_state, public_listing_state, company_name_ko, vertical)
+values
+  ('44444444-4444-4444-4444-444444444406', 'self_service', 'verified', 'on', 'Regtest Case6 Valid Co',  'product'),
+  ('44444444-4444-4444-4444-444444444407', 'self_service', 'verified', 'on', 'Regtest Case7 Valid Co',  'product'),
+  ('44444444-4444-4444-4444-444444444408', 'self_service', 'verified', 'on', 'Regtest Case8 Valid Co',  'product'),
+  ('44444444-4444-4444-4444-444444444409', 'self_service', 'verified', 'on', 'Regtest Case9 Valid Co',  'product'),
+  ('44444444-4444-4444-4444-444444444410', 'self_service', 'verified', 'on', 'Regtest Case10 Valid Co', 'product');
+
+insert into public.partner_consent (partner_id, consent_type, granted, method, collected_at)
+values
+  ('44444444-4444-4444-4444-444444444406', 'public_listing', true, 'online_self', now()),
+  ('44444444-4444-4444-4444-444444444407', 'public_listing', true, 'online_self', now()),
+  ('44444444-4444-4444-4444-444444444408', 'public_listing', true, 'online_self', now()),
+  ('44444444-4444-4444-4444-444444444409', 'public_listing', true, 'online_self', now()),
+  ('44444444-4444-4444-4444-444444444410', 'public_listing', true, 'online_self', now());
+
+-- NOTE on the exception-block pattern below: a bare `raise exception 'FAIL: ...'`
+-- (no `using errcode`) defaults to SQLSTATE P0001 — the SAME code
+-- create_seepn_inquiry raises for invalid_partner_count/duplicate_partner_ids.
+-- If the FAIL branch's raise were left at the default P0001, a broken RPC that
+-- wrongly SUCCEEDED would have its own "FAIL: ..." raise re-caught by
+-- `exception when sqlstate 'P0001'` below and misreported as PASS. Each FAIL
+-- raise in this section therefore uses an explicit, non-colliding SQLSTATE
+-- ('ZZ001') so an unexpectedly-successful call always propagates as a real
+-- failure instead of being swallowed by the very handler meant to catch the
+-- RPC's own rejection.
+
+do $$
+declare
+  v_id uuid;
+begin
+  -- h1: buyer B, 3 distinct valid partner ids -> success, exactly 3 rows land
+  -- in seepn_inquiry_partner for the returned inquiry id.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a02', false);
+  set role authenticated;
+
+  select public.create_seepn_inquiry(
+    array[
+      '44444444-4444-4444-4444-444444444405',
+      '44444444-4444-4444-4444-444444444406',
+      '44444444-4444-4444-4444-444444444407'
+    ]::uuid[],
+    'Regression-test multi-partner inquiry body, long enough to pass the 20-char minimum.'
+  ) into v_id;
+
+  if (select count(*) from public.seepn_inquiry_partner where inquiry_id = v_id) <> 3 then
+    raise exception 'FAIL: h1: create_seepn_inquiry with 3 partner ids must insert exactly 3 seepn_inquiry_partner rows' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: h1: create_seepn_inquiry with 3 partner ids inserts exactly 3 seepn_inquiry_partner rows';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- h2: 6 distinct valid partner ids -> rejected (max 5), no row inserted.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a02', false);
+  set role authenticated;
+
+  begin
+    perform public.create_seepn_inquiry(
+      array[
+        '44444444-4444-4444-4444-444444444405', '44444444-4444-4444-4444-444444444406',
+        '44444444-4444-4444-4444-444444444407', '44444444-4444-4444-4444-444444444408',
+        '44444444-4444-4444-4444-444444444409', '44444444-4444-4444-4444-444444444410'
+      ]::uuid[],
+      'Regression-test six-partner inquiry body, must be rejected before any insert happens.'
+    );
+    raise exception 'FAIL: h2: create_seepn_inquiry with 6 partner ids must be rejected (max 5)' using errcode = 'ZZ001';
+  exception
+    when sqlstate 'P0001' then
+      raise notice 'PASS: h2: create_seepn_inquiry with 6 partner ids is rejected (P0001 invalid_partner_count)';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- h3: duplicate partner ids in the array -> rejected, no row inserted.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a02', false);
+  set role authenticated;
+
+  begin
+    perform public.create_seepn_inquiry(
+      array[
+        '44444444-4444-4444-4444-444444444408',
+        '44444444-4444-4444-4444-444444444408'
+      ]::uuid[],
+      'Regression-test duplicate-partner-id inquiry body, must be rejected before any insert.'
+    );
+    raise exception 'FAIL: h3: create_seepn_inquiry with a duplicated partner id must be rejected' using errcode = 'ZZ001';
+  exception
+    when sqlstate 'P0001' then
+      raise notice 'PASS: h3: create_seepn_inquiry with a duplicated partner id is rejected (P0001 duplicate_partner_ids)';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- h4: one partner id (case1) fails the public-listing gate (verification_state
+  -- != verified) -> the whole call is rejected as partner_not_found, even
+  -- though the other id (case5) is fully valid.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a02', false);
+  set role authenticated;
+
+  begin
+    perform public.create_seepn_inquiry(
+      array[
+        '44444444-4444-4444-4444-444444444401',
+        '44444444-4444-4444-4444-444444444405'
+      ]::uuid[],
+      'Regression-test inquiry body referencing one gate-failing partner id, must be rejected.'
+    );
+    raise exception 'FAIL: h4: create_seepn_inquiry with one non-publicly-listed partner id must be rejected' using errcode = 'ZZ001';
+  exception
+    when sqlstate 'P0002' then
+      raise notice 'PASS: h4: create_seepn_inquiry with one non-publicly-listed partner id is rejected (P0002 partner_not_found)';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
 
 
 -- =============================================================================
