@@ -71,6 +71,79 @@ async function guardSupplier(request: NextRequest): Promise<NextResponse> {
   return response
 }
 
+// Design Ref: seepn-buyer-web-p5a.screen-spec.md §1.2/§1.3 (D-S1/D-S2) + privacy review §7.3 —
+// third session cookie namespace (`sb-buyer-auth`), same "middleware = session presence only,
+// protected layout = business-rule DB round trip" division of labor as guardSupplier. Kept as
+// its own local literal (not imported from lib/supabase/buyerAuthCookieName.ts) for the exact
+// same reason SUPPLIER_AUTH_COOKIE_NAME above is a local literal, not an import — GAP-6's
+// diagnosed root cause was specifically an import crossing a 'use client' boundary; this file
+// has none of those imports at all today, and it should stay that way.
+const BUYER_AUTH_COOKIE_NAME = 'sb-buyer-auth'
+
+// screen-spec §7.4 BP-15: only /seepn/my/* and the inquiry-write page require a session at the
+// middleware layer — /seepn/partners (the list) and /seepn/partners/[id] (the detail) are
+// reachable without a session at THIS layer on purpose. The detail page's actual access control
+// is the DB-level gate (private.is_active_buyer() on public.partner_detail_buyer, GAP-1/BP-1)
+// plus its own requireBuyerSession() call (lib/seepn/session.ts) — redirecting it here too would
+// just be a second, redundant UX-only gate, which is fine to add later at the frontend round but
+// is not this migration's job to decide.
+function isBuyerProtectedPath(pathname: string): boolean {
+  return pathname.startsWith('/seepn/my')
+}
+
+async function guardBuyer(request: NextRequest): Promise<NextResponse> {
+  let response = NextResponse.next({ request })
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY
+  const pathname = request.nextUrl.pathname
+  const isProtectedPath = isBuyerProtectedPath(pathname)
+
+  if (!url || !key) {
+    if (isProtectedPath) {
+      return NextResponse.redirect(new URL('/seepn/login', request.url))
+    }
+    return response
+  }
+
+  const supabase = createServerClient(url, key, {
+    cookieOptions: { name: BUYER_AUTH_COOKIE_NAME },
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        response = NextResponse.next({ request })
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+      },
+    },
+  })
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    if (isProtectedPath) return NextResponse.redirect(new URL('/seepn/login', request.url))
+    return response
+  }
+
+  if (pathname === '/seepn/login' || pathname === '/seepn/signup') {
+    return NextResponse.redirect(new URL('/seepn/partners', request.url))
+  }
+
+  return response
+}
+
+// privacy review §7.4 BP-15. `null` means "do not force a Cache-Control header at all" (the
+// public list page) — everything else gets an explicit value.
+function seepnCacheControlFor(pathname: string): string | null {
+  if (pathname === '/seepn/partners') return null
+  if (/^\/seepn\/partners\/[^/]+$/.test(pathname)) return 'private, no-store'
+  return 'no-store'
+}
+
 async function guardAdmin(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({ request })
 
@@ -154,9 +227,23 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  if (request.nextUrl.pathname.startsWith('/seepn')) {
+    const response = await guardBuyer(request)
+    // privacy review §7.4 BP-15 per-path table, now that the actual list/detail/my pages exist:
+    //   - /seepn/partners (list): cache allowed — no header forced, so a shared/edge cache can
+    //     serve it (the page itself never reads cookies for its own data — see app/seepn/
+    //     partners/page.tsx's comment on why bookmark state is deliberately NOT server-rendered).
+    //   - /seepn/partners/[id] (detail, login-gated data): `private, no-store`.
+    //   - everything else under /seepn (auth screens, /seepn/my/*, the inquiry form): `no-store`,
+    //     same as /admin and /supplier.
+    const cacheControl = seepnCacheControlFor(request.nextUrl.pathname)
+    if (cacheControl) response.headers.set('Cache-Control', cacheControl)
+    return response
+  }
+
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*', '/supplier/:path*'],
+  matcher: ['/', '/admin/:path*', '/supplier/:path*', '/seepn/:path*'],
 }
