@@ -42,10 +42,10 @@ export const SEEPN_BUYER_MARKETING_CONSENT_VERSION = SEEPN_BUYER_PRIVACY_CONSENT
 // This flag is NOT the whole "we may announce sign-up to real users" decision. Four items were
 // raised alongside this sign-off and are tracked outside this file — do not treat flipping this
 // constant as having cleared them:
-//   1. BP-24 — pg_cron registration of private.run_daily_retention_batches() is still
-//      unconfirmed (Dashboard step, not a migration). The buyer privacy policy §5 now publishes
-//      "매일 1회 자동 파기" + the 12-month/30-day dormancy figures, so an unregistered cron makes
-//      that text false. Confirm `cron.job` before real sign-ups.
+//   1. BP-24 — CONFIRMED 2026-09-10 (CEO, via Supabase SQL Editor): cron.job for
+//      'fkp-daily-retention-batches' is active = true with a recent status = 'succeeded' run.
+//      The buyer privacy policy §5's "매일 1회 자동 파기" claim is accurate. See privacy review
+//      §12 BP-24 row for the exact queries run.
 //   2. P-18 (legal-review-queue.md) — buyer_grant_consent() has no calling screen, so marketing
 //      consent can be given with one checkbox but only withdrawn by emailing support.
 //   3. P-16 / T-8 — buyer_withdraw() does not delete auth.users, so a withdrawn email cannot
