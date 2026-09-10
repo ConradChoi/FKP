@@ -323,4 +323,5 @@ PRD §3.1.5(2)의 B-11 경계는 **문의에 적용되는 것이지 "몇 건을 
 
 | Version | Date | Changes | Author |
 |---|---|---|---|
+| 1.1 | 2026-09-10 | **GAP-C1 해소 및 프로덕션 반영 완료.** 대표 결정("스키마 확장해서 여러 건 동시 문의")에 따라 `supabase/migrations/20260910180000_seepn_inquiry_multi_partner.sql`로 신규 조인 테이블 `seepn_inquiry_partner` + `create_seepn_inquiry(p_partner_ids uuid[], p_body text)`(1~5건, 파트너 게이트는 P5a보다 강화)를 구현·qa-reviewer/privacy-security-officer 검토·배포까지 완료했다(git `13ed1c9`, 대표가 Dashboard SQL Editor에서 직접 실행 확인). PSO-C1(§6.2 참조)도 이 과정에서 함께 검토됨 — INQ-4 원칙(본문 PII는 운영자만 열람, 파트너에게는 익명 요약만) 승계 확인, 노출 범위 확대 없음. OQ-C3(P5b 규모 재산정)은 project-manager에게 여전히 공유 필요 — GAP-C1 자체는 해소됐지만 "M" 추정이 맞는 규모인지는 미확정. EDGE-C9(무효 id 부분 접수)는 실제 구현과 다름(전건 거절 방식) — **P5b 문의 연동 화면 작업 시 이 문서의 EDGE-C9를 실제 동작에 맞게 정정할 것** | privacy-security-officer / backend-developer / qa-reviewer (구현), Claude(정리) |
 | 1.0 | 2026-09-10 | 최초 작성 — PRD D-12, §3.1.4(B-12b/B-12e), §3.1.5(INQ-1~7), §3.2.2(A/B/C), §7.2(SP-12) 기준. SP-12 답변(동일 버티컬 내 비교만 허용) 확정. 실제 P5a 마이그레이션 대조로 GAP-C1(문의 다중 참조 스키마가 PRD 서술과 달리 미구현) 발견 — 우선순위 높은 후속 확인 필요. BY-13~16 + BY-A2(Admin 부속) 정의, 엣지케이스 10건, Open Question 7건, privacy-security-officer 핸드오프 4건 | service-planner |
