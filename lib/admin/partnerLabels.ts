@@ -153,6 +153,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'partner.document_upload': '문서 업로드',
   'partner.document_delete': '문서 삭제',
   'partner.withdraw': '탈퇴',
+  // BP-28 (privacy-security-officer, P5b 배포 리뷰) — admin_set_partner_featured()가 남기는
+  // 큐레이션 감사 기록(20260911100000_seepn_partner_featured_pick.sql §2).
+  'admin_partner_featured.set': '추천 파트너 지정',
+  'admin_partner_featured.unset': '추천 파트너 해제',
 }
 
 export function label(map: Record<string, string>, value: string | null | undefined): string {

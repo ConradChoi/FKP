@@ -34,6 +34,7 @@ interface SearchParams {
   overseas?: string
   intakeSource?: string
   category?: string
+  featured?: string
   sort?: string
   page?: string
 }
@@ -93,6 +94,15 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
     }
   }
 
+  // 화면정의서 §7.3(BY-A2) "추천 파트너만 보기" 필터 — partner_featured_pick은 admin 전용 RLS로
+  // 직접 조회 가능(20260911100000 §1 주석, 신규 RPC 불필요). 다른 필터와 AND로 조합되도록 기존
+  // partnerIdFilter와 별도의 .in()으로 적용한다(카테고리 필터와 동일 패턴).
+  let featuredIdFilter: string[] | null = null
+  if (sp.featured === '1') {
+    const { data: featuredRows } = await supabase.from('partner_featured_pick').select('partner_id').eq('active', true)
+    featuredIdFilter = Array.from(new Set((featuredRows ?? []).map((r) => r.partner_id)))
+  }
+
   let query = supabase
     .from('partner')
     .select(
@@ -120,6 +130,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
   if (sp.overseas === 'no') query = query.eq('overseas_experience', false)
   if (sp.intakeSource && sp.intakeSource !== 'all') query = query.eq('intake_source', sp.intakeSource)
   if (partnerIdFilter !== null) query = query.in('id', partnerIdFilter.length > 0 ? partnerIdFilter : ['00000000-0000-0000-0000-000000000000'])
+  if (featuredIdFilter !== null) query = query.in('id', featuredIdFilter.length > 0 ? featuredIdFilter : ['00000000-0000-0000-0000-000000000000'])
 
   if (sp.sort === 'completeness') query = query.order('capability_completeness_pct', { ascending: true })
   else if (sp.sort === 'name') query = query.order('company_name_ko', { ascending: true })
@@ -151,6 +162,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
     overseas: sp.overseas,
     intakeSource: sp.intakeSource,
     category: sp.category,
+    featured: sp.featured,
     sort: sp.sort,
   }
   const otherParams: Record<string, string | undefined> = {
@@ -161,6 +173,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
     overseas: sp.overseas,
     intakeSource: sp.intakeSource,
     category: sp.category,
+    featured: sp.featured,
     sort: sp.sort,
   }
 

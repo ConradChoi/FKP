@@ -151,8 +151,13 @@ export default async function PartnerDetailPage({
     supabase.from('partner_standard_category').select('standard_category_id').eq('partner_id', id),
     supabase
       .from('audit_log')
+      // BP-28 (privacy-security-officer, P5b 배포 리뷰) — admin_set_partner_featured()
+      // (20260911100000_seepn_partner_featured_pick.sql §2)는 감사 기록을
+      // target_table='partner_featured_pick' / target_id=partner_id로 남긴다(action
+      // 'admin_partner_featured.set'/'unset'). target_table='partner' 단독 조회로는
+      // 이 파트너의 큐레이션 지정/해제 이력이 이 탭에서 누락되므로 두 target_table을 함께 조회.
       .select('id, occurred_at, action, actor_kind, actor_name_snapshot, result')
-      .eq('target_table', 'partner')
+      .in('target_table', ['partner', 'partner_featured_pick'])
       .eq('target_id', id)
       .order('occurred_at', { ascending: false })
       .limit(200),

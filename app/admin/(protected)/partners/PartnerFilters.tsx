@@ -19,6 +19,7 @@ export interface PartnerFilterValues {
   overseas?: string // all|yes|no
   intakeSource?: string
   category?: string // comma-separated ids
+  featured?: string // '1' | undefined — screen-spec §7.3 "추천 파트너만 보기"
   sort?: string
 }
 
@@ -31,6 +32,7 @@ export function PartnerFilters({ initial, categoryOptions }: { initial: PartnerF
   const [overseas, setOverseas] = useState(initial.overseas ?? 'all')
   const [intakeSource, setIntakeSource] = useState(initial.intakeSource ?? 'all')
   const [categoryIds, setCategoryIds] = useState<string[]>(initial.category ? initial.category.split(',') : [])
+  const [featured, setFeatured] = useState(initial.featured === '1')
   const [sort, setSort] = useState(initial.sort ?? 'recent')
 
   function toggleLanguage(code: string) {
@@ -48,6 +50,7 @@ export function PartnerFilters({ initial, categoryOptions }: { initial: PartnerF
     if (overseas !== 'all') params.set('overseas', overseas)
     if (intakeSource !== 'all') params.set('intakeSource', intakeSource)
     if (categoryIds.length > 0) params.set('category', categoryIds.join(','))
+    if (featured) params.set('featured', '1')
     if (sort !== 'recent') params.set('sort', sort)
     const qs = params.toString()
     router.push(qs ? `/admin/partners?${qs}` : '/admin/partners')
@@ -61,6 +64,7 @@ export function PartnerFilters({ initial, categoryOptions }: { initial: PartnerF
     setOverseas('all')
     setIntakeSource('all')
     setCategoryIds([])
+    setFeatured(false)
     setSort('recent')
     router.push(initial.state ? `/admin/partners?state=${initial.state}` : '/admin/partners')
   }
@@ -102,6 +106,11 @@ export function PartnerFilters({ initial, categoryOptions }: { initial: PartnerF
           <option value="completeness">정렬: Completeness 낮은순</option>
           <option value="name">정렬: 회사명 가나다순</option>
         </select>
+        {/* 화면정의서 §7.3(BY-A2) — "추천 파트너만 보기", 다른 필터와 AND로 조합 가능 */}
+        <label className="flex items-center gap-1.5 admin-body-sm text-neutral-700">
+          <input type="checkbox" checked={featured} onChange={(e) => setFeatured(e.target.checked)} />
+          추천 파트너만 보기
+        </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
