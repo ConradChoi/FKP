@@ -36,6 +36,7 @@ export function PartnerDetailTabs({
   rejectedPiiPurged,
   canUpdate,
   canCreateDocument,
+  isFeatured,
 }: {
   partner: PartnerDetail
   documents: PartnerDocumentRecord[]
@@ -48,6 +49,7 @@ export function PartnerDetailTabs({
   rejectedPiiPurged: boolean
   canUpdate: boolean
   canCreateDocument: boolean
+  isFeatured: boolean
 }) {
   const [tab, setTab] = useState<TabKey>('basic')
   const hasBizCertDocument = documents.some((d) => d.doc_type === 'business_registration_cert')
@@ -105,6 +107,7 @@ export function PartnerDetailTabs({
             consents={consents}
             hasBizCertDocument={hasBizCertDocument}
             canUpdate={canUpdate}
+            isFeatured={isFeatured}
           />
         )}
         {tab === 'history' && (

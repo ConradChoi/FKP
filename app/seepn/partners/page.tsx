@@ -94,9 +94,47 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
   if (sp.sort === 'name') query = query.order('company_name_ko', { ascending: true, nullsFirst: false })
   else query = query.order('created_at', { ascending: false })
 
+  // BY-16 (screen-spec §7.2) — "운영자 선정" section. `partner_featured_public` is already
+  // returned in curation order (display_order — never selected, only used server-side for
+  // ordering per M-R12), so no .order() is added here. §7.2 "필터 순응": every active filter
+  // that also applies to the main `partner_list_public` query above is mirrored 1:1 here, so a
+  // buyer never sees a recommended partner that doesn't match their own filter selection. Only
+  // fetched on page 1 — repeating the same curated set on every paginated page would be noise
+  // rather than a first-impression surface (screen-spec §7.1's stated purpose).
+  let featuredQuery = supabase
+    .from('partner_featured_public')
+    .select('id, company_name_ko, company_name_en, location_region, vertical, service_types, supported_languages, overseas_experience, created_at')
+
+  if (sp.q && sp.q.trim()) {
+    const term = sp.q.trim().replace(/[%_]/g, '')
+    featuredQuery = featuredQuery.or(`company_name_ko.ilike.%${term}%,company_name_en.ilike.%${term}%`)
+  }
+  if (sp.region) {
+    const regions = sp.region.split(',').filter(Boolean)
+    if (regions.length > 0) featuredQuery = featuredQuery.in('location_region', regions)
+  }
+  if (sp.languages) {
+    const languages = sp.languages.split(',').filter(Boolean)
+    if (languages.length > 0) featuredQuery = featuredQuery.overlaps('supported_languages', languages)
+  }
+  if (sp.overseas === 'yes') featuredQuery = featuredQuery.eq('overseas_experience', true)
+  if (sp.overseas === 'no') featuredQuery = featuredQuery.eq('overseas_experience', false)
+  if (sp.vertical === 'product' || sp.vertical === 'service') featuredQuery = featuredQuery.eq('vertical', sp.vertical)
+  if (sp.vertical === 'service' && sp.serviceTypes) {
+    const types = sp.serviceTypes.split(',').filter(Boolean)
+    if (types.length > 0) featuredQuery = featuredQuery.overlaps('service_types', types)
+  }
+  if (partnerIdFilter !== null) {
+    featuredQuery = featuredQuery.in('id', partnerIdFilter.length > 0 ? partnerIdFilter : NO_MATCH_SENTINEL)
+  }
+
   const from = (page - 1) * PAGE_SIZE
-  const { data: rows, count: filteredCount, error } = await query.range(from, from + PAGE_SIZE - 1)
+  const [{ data: rows, count: filteredCount, error }, { data: featuredRows }] = await Promise.all([
+    query.range(from, from + PAGE_SIZE - 1),
+    page === 1 ? featuredQuery : Promise.resolve({ data: [] as PartnerCardData[] }),
+  ])
   const partners = (rows ?? []) as PartnerCardData[]
+  const featuredPartners = (featuredRows ?? []) as PartnerCardData[]
   const totalPages = Math.max(1, Math.ceil((filteredCount ?? 0) / PAGE_SIZE))
 
   const filterValues: PartnerFilterValues = {
@@ -133,6 +171,16 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
           <PartnerFilters initial={filterValues} categoryTree={categoryTree} />
 
           <div>
+            {featuredPartners.length > 0 && (
+              <section className="mb-6 rounded-card border border-primary-100 bg-primary-50 p-4">
+                <h2 className="text-body font-semibold text-primary-800">운영자 선정</h2>
+                <p className="mt-0.5 text-label-caption text-primary-700">SEEPN이 추천하는 파트너입니다.</p>
+                <div className="mt-3">
+                  <PartnerListClient partners={featuredPartners} featured />
+                </div>
+              </section>
+            )}
+
             <p className="mb-3 text-body-sm text-neutral-500">총 {filteredCount ?? 0}곳</p>
 
             {error && <p className="text-body-sm text-error">목록을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</p>}

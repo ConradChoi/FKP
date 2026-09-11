@@ -45,6 +45,8 @@ service-planner가 §0.3에서 발견한 GAP-1 / GAP-2는 **둘 다 사실로 �
 
 BP-15 ~ BP-21. §10에 정리.
 
+> **[2026-09-11 추가] BP-28 / BP-29 / BP-30 (위험도 권고, 배포 차단 아님)** — P5b(비교 BY-13/14 + 운영자 큐레이션 BY-16/BY-A2, `20260911100000`) 사전검토에서 나왔다. **§3.4**에 정리했다. 요지: **BP-28** 큐레이션 감사 기록이 Admin 파트너 이력 탭에 안 보임(`target_table` 필터 1줄 + 라벨 2줄), **BP-29** 추천 지정을 유료화하면 대가성 표시 의무·파트너 고지 갱신이 선행(v1.0 해당 없음), **BP-30** 회귀 테스트에 `display_order` 비노출·감사 기록 구조 가드 추가. **§3.4의 결론: 신규 공개 노출면은 `partner_featured_public` 1개이며 컬럼 집합이 `partner_list_public`과 1:1로 동일하다 — 신규 개인정보 항목 0건, EDGE-C11 게이트 승계 합격.**
+
 > **[2026-09-10 추가] BP-26 / BP-27 (위험도 권고, 배포 차단 아님)** — GAP-C1(문의 1~5건 다중 참조, `20260910180000`) 재검토에서 나왔다. **§5.3(h)**에 정리했다. 요지: **BP-26** 바이어 전체 레이트리밋이 "문의 건수" 기준이라 실질 파트너 도달량이 최대 5배 — 참조 수 합계 기준 보조 한도 권고, **BP-27** Admin 상세의 "파트너에게 식별정보 전달 금지" 배너에 다중 전달처(최대 5곳) 취지 반영 권고. **§5.3(h)의 결론: 이번 확장은 본문 열람 주체를 넓히지 않으며, 문의 대상 파트너 게이트는 오히려 강화됐다.**
 
 > **[2026-09-10 추가] BP-22 ~ BP-24 (위험도 주요, P5a 차단 아님)** — D-14① 이행 과정(유출 대응 절차·내부관리계획 신규 작성)에서 발견됐다. **§12 ceo-advisor 섹션의 결정 ① 블록**에 표로 정리했다. 요지: **BP-22** 유출 통지 대상자 추출 함수 부재(P5a에서 사전 구현), **BP-23** 권한 변경 이력이 2년에 일괄 삭제되어 법정 3년 미달, **BP-24** 파기 배치의 pg_cron 등록 여부 미확인(처리방침은 이미 "매일 1회 자동 파기"를 공개 중).
@@ -271,6 +273,77 @@ grant select on public.partner_category_count_public to anon, authenticated;
 | 카운트로 SEEPN의 공급 규모(사업 정보)가 노출되지 않는가 | 개인정보 이슈가 아니라 **경영 판단**이다. 총 건수 표시(B-16)를 대표가 이미 승인했으므로 일관된다 |
 
 > **비고(개인정보 아님, 설계 참고)**: L1 롤업 카운트는 조상 폐포(ancestor closure)가 필요하다. §4.2 D-S4가 "L1은 배지, L2/L3는 숨김"을 정책으로 확정했으므로, L1 카운트를 **자기 노드 직접 연결 수**로 계산하면 거의 항상 0이 나온다. backend-developer는 재귀 CTE 또는 `path` 컬럼 기반 롤업을 쓸 것.
+
+### 3.4 [2026-09-11 추가] P5b — 비교(BY-13/14)와 운영자 큐레이션(BY-16/BY-A2) 재검토
+
+P5b(`20260911100000_seepn_partner_featured_pick.sql`, `app/seepn/compare/**`, `components/seepn/CompareTable.tsx`, `app/seepn/partners/page.tsx`, `app/admin/(protected)/partners/[id]/ConsentTab.tsx`) 배포 전 검토. screen-spec §10 PSO-C2 핸드오프 응답이다. **결론: 신규 공개 노출면은 1개(`public.partner_featured_public`)이고, 그 뷰가 노출하는 컬럼 집합은 이미 anon에 열려 있는 `partner_list_public`과 1:1로 동일하다. 신규 개인정보 항목 0건, 신규 수집 0건, 신규 제3자 제공 0건.**
+
+**(a) 비교 화면(BY-13/14) — 신규 노출면 아님 (PSO-C4 확인)**
+
+| 확인 항목 | 결과 |
+|---|---|
+| 읽는 대상 | `public.partner_detail_buyer`를 `.in('id', ids)`로 배치 조회. **뷰도 GRANT도 P5a 그대로**이고 신규 뷰·신규 컬럼이 없다(GAP-C4가 예측한 그대로) |
+| 게이트 | 뷰 본문의 `private.is_active_buyer()` + `private.partner_public_base` 3계층 게이트가 그대로 적용된다. 배치 조회라고 우회되는 지점이 없다 — 존재하지 않거나 게이트를 못 통과한 id는 조용히 결과에서 빠지고 화면은 "일부 파트너는 현재 비공개 상태라 제외되었습니다"로만 알린다(어느 id가 왜 빠졌는지 알려주지 않는 비누출 자세 유지) |
+| 상세(BY-09)에 없던 필드가 딸려 나오는가 | **아니다.** `CompareTable.tsx`가 렌더하는 필드는 상세 페이지가 렌더하는 집합의 **진부분집합**이다(비교표는 `website_url`을 렌더하지 않는다). `capability_completeness_pct`는 두 공개 뷰 어디에도 SELECT되어 있지 않으므로 `select('*')`로도 도달 불가 — GAP-C2/BP-12 결정이 구조로 지켜진다 |
+| `select('*')`가 RSC 페이로드로 새는가 | **아니다.** `CompareTable`은 서버 컴포넌트이고 클라이언트 컴포넌트(`PartnerListClient`)에 넘어가는 것은 목록 9개 컬럼(`PartnerCardData`)뿐이다 |
+| 소유권 미검사(D-C3) | BY-09와 동일 모델의 반복이므로 별도 위험으로 취급하지 않는다(PSO-C4 그대로) |
+
+**(b) 큐레이션(BY-16/BY-A2) — EDGE-C11 게이트 승계 검증: 합격**
+
+§2.4의 "게이트를 손으로 복제하지 말 것" 원칙을 그대로 지켰다. 뷰 본문을 직접 확인했다.
+
+```sql
+create or replace view public.partner_featured_public as
+select l.id, l.company_name_ko, ... , l.created_at
+from public.partner_featured_pick fp
+join public.partner_list_public l on l.id = fp.partner_id   -- 게이트는 여기서 상속된다
+where fp.active = true
+order by fp.display_order nulls last, fp.picked_at asc;
+```
+
+| 확인 항목 | 결과 |
+|---|---|
+| 게이트 재구현/우회 경로 | **없다.** `partner_featured_pick`이 `public.partner`나 `private.partner_public_base`의 기반 테이블에 직접 조인되는 코드 경로가 0건이고, WHERE 절에 3계층 조건을 손으로 복제한 곳도 0건이다. 비공개/미검증/동의철회/탈퇴 전환 시 `partner_list_public`에서 사라지는 **같은 statement에서** 추천 섹션에서도 사라진다(별도 정리 배치 불필요 = 드리프트 불가) |
+| 지정(write) 시점 게이트 | **일부러 걸지 않았고, 이 판단에 동의한다.** 관리자는 검증 전 파트너를 미리 지정할 수 있고, 읽기 시점 게이트만이 노출을 결정한다. Admin 화면도 "현재 공개 상태가 아닙니다 — 지정해도 공개 전환 전까지는 목록에 노출되지 않습니다"를 명시한다 |
+| 직접 읽기 차단 | `partner_featured_pick`은 `revoke all from anon, authenticated` 후 `grant select to authenticated` + RLS(`is_active_admin` + `is_aal2` + `partner_management:read`) 1개 정책뿐. anon은 `insufficient_privilege`, 바이어/파트너 세션은 0행 |
+| 쓰기 경로 | `admin_set_partner_featured()`(SECURITY DEFINER) **단일**. INSERT/UPDATE/DELETE 정책도 GRANT도 없다 — `public.partner`와 동일한 "RPC-only" 관례 |
+| 회귀 테스트 | `supabase/tests/seepn_buyer_regression.sql` §i(i1~i13)가 비관리자 거부, 게이트 미통과 파트너 미노출, **공개→비공개 전환 시 pick 행은 그대로 두고 뷰에서만 사라짐(i7/i8)**, anon 직접 조회 차단(i12)·뷰 조회 허용(i13)을 모두 덮는다 |
+
+**(c) M-R12(임의 순위·점수 숫자 금지) — 준수**
+
+| 경로 | 결과 |
+|---|---|
+| `partner_featured_public` | `display_order`를 **SELECT 목록에 두지 않고 ORDER BY에서만** 쓴다 → PostgREST로도 컬럼 자체가 존재하지 않아 조회 불가 |
+| `app/seepn/partners/page.tsx` | 9개 컬럼만 명시 select. 추천 섹션은 `.order()`를 추가하지 않는다 |
+| `PartnerCard` | `featured` prop은 **"운영자 선정" 라벨 배지 하나**만 렌더. 순위 숫자·점수·"TOP N" 서수 표현 없음 |
+| Admin(BY-A2) | UI에서 `display_order`를 **받지도 보여주지도 않는다**(RPC 기본값 "맨 뒤에 append"만 사용). 안내 문구에 "지정 순서는 화면에 순위로 표시되지 않습니다" 명시 |
+| 법령 관점 보강 | 이 큐레이션은 **운영자가 직접 고르는 인적 결정**이므로 법 제37조의2(완전히 자동화된 결정에 대한 거부권·설명요구권·기준 공개) 적용 대상이 아니다. **B-12d(점수 랭킹, P7)로 알고리즘 선정으로 바뀌는 순간 이 판정은 재검토 대상**이 된다 |
+
+**(d) 감사 추적 — 기록은 남는다, 다만 운영자가 볼 화면이 없다 → BP-28**
+
+`admin_set_partner_featured()`가 `private.log_audit(p_action := 'admin_partner_featured.set' | '.unset', p_target_table := 'partner_featured_pick', p_target_id := partner_id, p_subject_ids := array[partner_id], before/after 요약)`를 호출하고, `audit_log.action` CHECK 화이트리스트에 두 값이 카테고리 M으로 추가됐다(diff base `20260910100000` 확인 — 그 이후 파일 중 이 제약을 건드린 것은 없다. `20260910180000`은 건드리지 않았다). 화이트리스트 누락이면 RPC 자체가 CHECK 위반으로 실패하므로, 회귀 테스트 i3/i5/i6/i10 통과가 곧 화이트리스트 정합성의 증거다. 큐레이션 action은 권한변경 계열이 아니므로 `purge_expired_audit_log()`의 2년 보존 대상이며 BP-23의 3년 보류 대상이 아니다(정상).
+
+**(e) 탈퇴·비공개 파트너의 잔존 데이터 — 개인정보 이슈 없음**
+
+| 확인 항목 | 결과 |
+|---|---|
+| `partner_featured_pick` 행의 운명 | 파트너가 탈퇴/비공개로 가도 **행은 그대로 남고 `partner_featured_public`에서만 빠진다.** `public.partner`를 하드 삭제하지 않는 이 저장소 관례(PR-5)와 일관되며, `on delete cascade`라 파트너 행이 실제로 지워지는 날 함께 사라진다 |
+| 그 행이 담고 있는 것 | `partner_id`(uuid) / `display_order` / `active` / `picked_by`(관리자 id) / `picked_at`. **정보주체의 개인정보는 0건**이고, 내용은 "우리 회사가 언제 누구를 추천으로 골랐는가"라는 **자사 운영 이력**이다 |
+| 개인사업자 대표자명과의 결합 가능성 | **없다.** `representative_name`은 `private.partner_contact`에만 존재하고 어떤 공개 뷰에도 없으며, `partner_withdraw()`가 탈퇴 시 `delete from private.partner_contact`로 **즉시 삭제**한다. 개인사업자는 추가로 상호·사업자번호·소재지·소개글까지 `[purged]`/null 처리된다(UI-B6) — 즉 pick 행이 남아도 결합할 상대가 사라진다 |
+
+**(f) PSO-C1 재확인(다중 참조 문의) — §5.3(h) 결론 유지**
+
+비교표 → `/seepn/compare/inquiry`가 실제로 배포됐으므로 코드로 최종 확인했다. 이 화면은 **P5a의 `InquiryForm`을 그대로 재사용**하고 `partnerIds`(최대 5)와 `replyEmail`(계정에서 읽은 읽기전용 표시)만 넘긴다 — 발신자 파라미터도, 구조화 필드도 추가되지 않았다(`create_seepn_inquiry(uuid[], text)` 2파라미터 유지). 파트너를 향한 본문 읽기 경로는 여전히 **0건**(`seepn_inquiry`/`seepn_inquiry_partner` 둘 다 파트너용 SELECT 정책 부재, `/supplier` 참조 0건)이고, 운영자만 열람 → 익명 요약 전달이라는 §5.4 규칙이 유일한 전달 채널이다. **재작업 불요.**
+
+**(g) 남는 권고 3건 (전부 비차단)**
+
+- **BP-28(권고)**: 큐레이션 감사 기록이 **운영자가 실제로 보는 화면에는 나타나지 않는다.** `app/admin/(protected)/partners/[id]/page.tsx`의 이력 조회가 `.eq('target_table', 'partner')`로 고정되어 있고 `AUDIT_ACTION_LABELS`(`lib/admin/partnerLabels.ts`)에도 `admin_partner_featured.*` 라벨이 없다. `target_id`는 이미 `partner_id`이므로 **`.in('target_table', ['partner','partner_featured_pick'])` + 라벨 2줄 추가**면 끝난다. 법적 요건(기록 존재)은 이미 충족이고 이건 가용성 문제다.
+- **BP-29(권고, 선제 경고)**: 추천 지정이 **유료(대가성 노출)로 바뀌는 순간** 성격이 달라진다 — 표시·광고 관점의 "대가 지급 사실" 표시 의무가 생기고, 파트너 공개 동의 고지(`처리방침 §7` / `PUBLIC_LISTING_EXPOSED_FIELDS`)에 "당사가 선정해 상단 노출할 수 있음"을 넣을지도 재검토 대상이 된다. **v1.0은 무상 운영자 선정이라 해당 없음.** 유료화 논의가 시작되면 privacy-security-officer + **변호사 검토 필요**.
+- **BP-30(권고)**: 회귀 테스트 §i에 **구조 가드 2개**를 추가할 것 — ① `partner_featured_public`에 `display_order` 컬럼이 존재하지 않음(`information_schema.columns` 카운트 0) ② 지정/해제 직후 `audit_log`에 해당 action 행이 1건씩 쌓임. 현재는 둘 다 간접 증거로만 보장된다.
+
+**(h) 판정**
+
+> **배포 가능(blocking 0건).** PSO-C2는 해소됐다 — 큐레이션은 3계층 게이트를 우회하지 않고 상속한다. BP-28/29/30은 배포 후 처리해도 되는 권고다.
 
 ---
 
@@ -830,6 +903,7 @@ PRD §4.3.1이 **"P5a 착수는 TR-4″-2 재검토를 자동으로 트리거한
 
 | Version | Date | Changes | Author |
 |---|---|---|---|
+| 1.3 | 2026-09-11 | **P5b(비교 BY-13/14 + 운영자 큐레이션 BY-16/BY-A2) 사전검토 반영 — §3.4 신설, §0.3에 BP-28~30 추가.** screen-spec §10 **PSO-C2 해소**: `public.partner_featured_public`이 `public.partner_list_public`을 INNER JOIN해 3계층 게이트를 상속하며 게이트를 재구현·우회하는 경로가 0건임을 SQL 원문·회귀 테스트(§i i1~i13)로 확인. PSO-C4(비교 화면)는 신규 노출면 아님으로 확인 — `CompareTable`이 렌더하는 필드는 BY-09 상세의 진부분집합. M-R12(`display_order` 미노출) 4개 경로 전부 준수 확인 + 인적 결정이므로 법 제37조의2 비적용임을 기록. PSO-C1(다중 참조 문의)은 `/seepn/compare/inquiry` 실제 코드로 §5.3(h) 결론 유지 재확인. 탈퇴 파트너의 pick 행 잔존은 개인정보 아님으로 판정(대표자명은 `private.partner_contact`에만 존재하며 탈퇴 시 즉시 삭제). **배포 차단 0건** | privacy-security-officer |
 | 1.2 | 2026-09-10 | **D-14④(휴면 12개월/30일 파기) 대체 결정 병기 — §12 결정 ④ 아래에 "휴면 재결정" 블록 추가(원 결정은 보존).** 유예기간 30일→6개월, 자동 탈퇴 시 `buyer_account.status`만 `withdrawn`으로 바꾸고 `buyer_bookmark`·`seepn_inquiry`는 손대지 않는 방식으로 변경. BP-18의 원칙("처리방침 숫자 = 배치 동작")에 따라 바이어 법무 문서 2건을 제자리 수정했고(`legal-review-queue.md` 1.4), **법적 판단(안내 미발송 상태의 일방 해지 + 해지 후 무기한 보존과 법 제21조)은 P-19·T-9에 미해소로 남아 배치 가동 전 회신이 필요하다** | privacy-security-officer |
 | 1.1 | 2026-09-10 | **ceo-advisor 결정 4건 인라인 반영(PRD D-14).** §12 에스컬레이션 3건에 각각 "→ ceo-advisor 승인" 블록 병기(원 질의·권고는 보존) + 결정 ④(바이어 12개월/30일 파기, 구 BP-18) 추가. D-14① 이행으로 `data-breach-response-procedure-v1.0.md` / `internal-management-plan-v1.0.md` 신규 작성(둘 다 기존 미존재 확인). 그 과정에서 **BP-22(통지 대상자 추출 함수 부재) / BP-23(권한 변경 이력 2년 purge — 법정 3년 미달) / BP-24(파기 배치 pg_cron 등록 미확인)** 3건 신규 발견, §0.3·§12에 기재. D-14③으로 BP-9의 이행 범위가 ko 1개 로케일로 축소(BP-10은 유효) | privacy-security-officer |
 | 1.0 | 2026-09-10 | 최초 작성. PRD D-3′/D-12/D-13 + screen-spec §11 PSO-1~5 + §4.4 P5a DoD ①~⑤ 기준. 마이그레이션 원문 대조로 F-1~F-14 확인 — GAP-1/GAP-2 사실 확정, `partner_public`의 PR-1/B-9c′ 준수는 **합격** 확인, GAP-3·audit_log 화이트리스트·`log_audit` else 분기 등 추가 발견. 배포 전 필수 14건(BP-1~14, 치명적 2건) + 권고 7건(BP-15~21). 3-뷰 분리 설계, `partner_category_public`, `seepn_inquiry` 처리 기준, bookmark 보관 기준, 바이어 법무 문서 판정, 국외이전 판정, 인증 클라이언트 구현 지시 확정. P5a DoD 추가 게이트 28항목 | privacy-security-officer |

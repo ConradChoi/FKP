@@ -137,7 +137,7 @@ export default async function PartnerDetailPage({
     supabase.rpc('has_menu_permission_check', { p_menu_code: 'partner_management', p_action: 'create' }),
   ])
 
-  const [{ data: documents }, { data: consents }, { data: categoryLinks }, { data: auditEntries }, categoryOptions] = await Promise.all([
+  const [{ data: documents }, { data: consents }, { data: categoryLinks }, { data: auditEntries }, categoryOptions, { data: featuredPick }] = await Promise.all([
     supabase
       .from('partner_document')
       .select('id, doc_type, storage_path, original_filename, mime_type, file_size_bytes, uploaded_by_kind, purge_after, pending_deletion_at, created_at')
@@ -157,6 +157,10 @@ export default async function PartnerDetailPage({
       .order('occurred_at', { ascending: false })
       .limit(200),
     fetchCategoryOptions(supabase),
+    // BY-A2 (screen-spec §7.3) — current "추천 파트너" designation state, so the toggle reflects
+    // reality on page load. `partner_featured_pick` is admin-only via RLS (20260911100000 §1),
+    // no new RPC needed to read it (spec: "신규 RPC 없이 관리자가 직접 조회 가능").
+    supabase.from('partner_featured_pick').select('active').eq('partner_id', id).eq('active', true).maybeSingle(),
   ])
 
   let referredByName: string | null = null
@@ -230,6 +234,7 @@ export default async function PartnerDetailPage({
           rejectedPiiPurged={!!rejectedPiiPurged}
           canUpdate={!!canUpdate}
           canCreateDocument={!!canCreate}
+          isFeatured={!!featuredPick}
         />
       </div>
     </div>

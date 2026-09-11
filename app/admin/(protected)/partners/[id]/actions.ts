@@ -42,6 +42,29 @@ export async function suspendListingAction(partnerId: string): Promise<ActionRes
   return { success: true }
 }
 
+// =============================================================================
+// §7.3 (BY-A2) 추천 파트너 지정/해제 — sole write path is admin_set_partner_featured()
+// (20260911100000). display_order is intentionally never passed from the UI — the RPC's own
+// default ("append to the end of the current active set") is exactly what screen-spec §7.3
+// asks for v1.0 ("display_order는 일단 안 받아도 된다").
+// =============================================================================
+
+export async function setPartnerFeaturedAction(partnerId: string, featured: boolean): Promise<ActionResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  const { error } = await supabase.rpc('admin_set_partner_featured', { p_partner_id: partnerId, p_featured: featured })
+  if (error) {
+    const errorCode =
+      error.code === '42501' ? 'ACCESS_DENIED' : error.code === 'P0002' ? 'PARTNER_NOT_FOUND' : 'FEATURED_SET_FAILED'
+    return { success: false, error: error.message, errorCode }
+  }
+
+  revalidatePath(`/admin/partners/${partnerId}`)
+  revalidatePath('/admin/partners')
+  return { success: true }
+}
+
 export interface RecordConsentInput {
   partnerId: string
   method: string

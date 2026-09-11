@@ -12,7 +12,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { getBuyerBrowserClient } from '@/lib/supabase/buyerBrowserClient'
 import { PartnerCard, type PartnerCardData } from './PartnerCard'
 
-export function PartnerListClient({ partners }: { partners: PartnerCardData[] }) {
+export function PartnerListClient({ partners, featured }: { partners: PartnerCardData[]; featured?: boolean }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -121,6 +121,7 @@ export function PartnerListClient({ partners }: { partners: PartnerCardData[] })
             bookmarked={bookmarkedIds.has(p.id)}
             onToggleBookmark={handleToggle}
             disabled={pendingId === p.id}
+            featured={featured}
           />
         ))}
       </div>

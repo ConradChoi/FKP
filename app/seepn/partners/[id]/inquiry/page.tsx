@@ -43,7 +43,7 @@ export default async function SeepnPartnerInquiryPage({ params }: { params: Prom
         </div>
 
         <div className="mt-4">
-          <InquiryForm partnerId={id} replyEmail={session.email ?? '가입 시 등록한 이메일'} />
+          <InquiryForm partnerIds={[id]} replyEmail={session.email ?? '가입 시 등록한 이메일'} />
         </div>
       </main>
 

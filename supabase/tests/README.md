@@ -70,6 +70,17 @@ exact list with rationale):
 - **g.** `purge_expired_audit_log()` — permission-related actions
   (`admin_access_request.approve` etc.) are held indefinitely past the
   2-year window; unrelated actions are purged as normal.
+- **h.** `create_seepn_inquiry(uuid[], text)` multi-partner behaviour — 1..5
+  partners accepted, >5 rejected, duplicate ids rejected, one
+  non-publicly-listed partner id in the array rejects the whole call.
+- **i.** B-12e operator curation (`admin_set_partner_featured()` /
+  `public.partner_featured_public`) — non-admin sessions denied; a featured,
+  gate-satisfying partner appears in the public view; a featured
+  gate-FAILING partner never appears; and the critical **EDGE-C11** case —
+  a partner that is actively featured and currently gate-satisfying
+  disappears from `partner_featured_public` the instant it goes private
+  (`public_listing_state='off'`), with `partner_featured_pick` itself
+  untouched, then reappears once public-listing is restored.
 
 ## When you MUST re-run this (and update it if it no longer covers your change)
 
@@ -79,10 +90,13 @@ whenever a migration touches any of:
 
 - An RLS policy's `USING` / `WITH CHECK` clause on `buyer_account`,
   `buyer_bookmark`, `buyer_consent`, `seepn_inquiry`, `partner`,
-  `partner_consent`, `partner_account`, `admin_user`, or `audit_log`.
-- A view's `WHERE` clause that gates public/buyer-facing data:
+  `partner_consent`, `partner_account`, `admin_user`, `audit_log`, or
+  `partner_featured_pick`.
+- A view's `WHERE`/`JOIN` clause that gates public/buyer-facing data:
   `private.partner_public_base`, `public.partner_list_public`,
-  `public.partner_detail_buyer`, `public.partner_category_public`.
+  `public.partner_detail_buyer`, `public.partner_category_public`,
+  `public.partner_featured_public` (EDGE-C11 — must stay joined to
+  `partner_list_public`, never to `partner` directly).
 - A `principal_kind` judgment function: `private.is_active_admin()`,
   `private.is_active_partner()`, `private.is_active_buyer()`, or the
   `auth_principal` mutual-exclusion registry itself.

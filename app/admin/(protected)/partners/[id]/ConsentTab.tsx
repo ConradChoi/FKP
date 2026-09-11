@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { adminInputClass, adminButtonPrimaryClass, adminButtonSecondaryClass, adminButtonDestructiveClass } from '@/components/admin/styles'
 import { CONSENT_TYPE_LABELS, CONSENT_METHOD_LABELS, EVIDENCE_KIND_LABELS } from '@/lib/admin/partnerLabels'
-import { setPublicListingAction, suspendListingAction, adminRecordPartnerConsentAction } from './actions'
+import { setPublicListingAction, suspendListingAction, adminRecordPartnerConsentAction, setPartnerFeaturedAction } from './actions'
 import { useRouter } from 'next/navigation'
 import type { PartnerConsentRecord } from './page'
 
@@ -24,6 +24,7 @@ export function ConsentTab({
   consents,
   hasBizCertDocument,
   canUpdate,
+  isFeatured,
 }: {
   partnerId: string
   intakeSource: string
@@ -32,10 +33,13 @@ export function ConsentTab({
   consents: PartnerConsentRecord[]
   hasBizCertDocument: boolean
   canUpdate: boolean
+  isFeatured: boolean
 }) {
   const router = useRouter()
   const [toggling, setToggling] = useState(false)
   const [toggleError, setToggleError] = useState<string | null>(null)
+  const [featuring, setFeaturing] = useState(false)
+  const [featuredError, setFeaturedError] = useState<string | null>(null)
 
   const [method, setMethod] = useState('phone')
   const [collectedAt, setCollectedAt] = useState(nowLocalDatetimeValue())
@@ -84,6 +88,22 @@ export function ConsentTab({
     setToggling(false)
     if (!result.success) {
       setToggleError('공개 중단 실패')
+      return
+    }
+    router.refresh()
+  }
+
+  async function handleToggleFeatured() {
+    const next = !isFeatured
+    if (!next && !window.confirm('추천 파트너 지정을 해제할까요?')) return
+    setFeaturing(true)
+    setFeaturedError(null)
+    const result = await setPartnerFeaturedAction(partnerId, next)
+    setFeaturing(false)
+    if (!result.success) {
+      setFeaturedError(
+        result.errorCode === 'ACCESS_DENIED' ? '권한이 없습니다.' : result.errorCode === 'PARTNER_NOT_FOUND' ? '파트너를 찾을 수 없습니다.' : '처리에 실패했습니다.',
+      )
       return
     }
     router.refresh()
@@ -175,6 +195,34 @@ export function ConsentTab({
           )}
         </div>
         {toggleError && <p className="mt-2 admin-body-sm text-error">{toggleError}</p>}
+      </section>
+
+      <section className="rounded-card border border-neutral-200 bg-neutral-0 p-5">
+        <h2 className="admin-heading-3 text-neutral-900">추천 파트너 지정</h2>
+        <p className="mt-1 admin-label-sm text-neutral-400">
+          목록(BY-08) 상단 "운영자 선정" 섹션에 노출됩니다. 지정 순서는 화면에 순위로 표시되지 않습니다 — 추천 파트너는 6~8곳 내외를 권장합니다(강제 아님).
+        </p>
+        {publicListingState !== 'on' && (
+          <p className="mt-2 admin-body-sm text-accent-700">
+            현재 공개 상태가 아닙니다 — 지정해도 공개 전환 전까지는 목록에 노출되지 않습니다.
+          </p>
+        )}
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {canUpdate ? (
+            <button
+              type="button"
+              onClick={handleToggleFeatured}
+              disabled={featuring}
+              className={isFeatured ? adminButtonDestructiveClass : adminButtonPrimaryClass}
+            >
+              {featuring ? '처리 중...' : isFeatured ? '추천 파트너 해제' : '추천 파트너로 지정'}
+            </button>
+          ) : (
+            <span className="admin-body-sm text-neutral-400">수정 권한이 없어 조회만 가능합니다.</span>
+          )}
+          {isFeatured && <span className="admin-body-sm text-success">현재 추천 파트너로 지정되어 있습니다.</span>}
+        </div>
+        {featuredError && <p className="mt-2 admin-body-sm text-error">{featuredError}</p>}
       </section>
 
       {intakeSource === 'admin_entry' && (

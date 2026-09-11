@@ -23,14 +23,23 @@ export function PartnerCard({
   bookmarked,
   onToggleBookmark,
   disabled,
+  featured,
 }: {
   partner: PartnerCardData
   bookmarked: boolean
   onToggleBookmark: (id: string) => void
   disabled?: boolean
+  // Design Ref: screen-spec §7.2 (BY-16) — "기존 PartnerCard 재사용 + 배지 하나 추가". M-R12:
+  // this badge is a label ONLY ("운영자 선정") — never a rank number, score, or "TOP N" phrasing.
+  featured?: boolean
 }) {
   return (
     <div className="relative rounded-card border border-neutral-200 bg-neutral-0 p-4 transition-shadow hover:shadow-sm">
+      {featured && (
+        <span className="absolute left-3 top-3 rounded-sm bg-accent-600 px-2 py-0.5 text-label-caption font-medium text-neutral-0">
+          운영자 선정
+        </span>
+      )}
       <button
         type="button"
         onClick={(e) => {
@@ -46,12 +55,12 @@ export function PartnerCard({
       </button>
 
       {disabled ? (
-        <div className="pr-8">
+        <div className={`pr-8 ${featured ? 'pt-6' : ''}`}>
           <PartnerCardBody partner={partner} />
           <p className="mt-2 text-label-caption text-neutral-400">현재 비공개 상태인 파트너입니다.</p>
         </div>
       ) : (
-        <Link href={`/seepn/partners/${partner.id}`} className="block pr-8">
+        <Link href={`/seepn/partners/${partner.id}`} className={`block pr-8 ${featured ? 'pt-6' : ''}`}>
           <PartnerCardBody partner={partner} />
         </Link>
       )}
@@ -59,7 +68,11 @@ export function PartnerCard({
   )
 }
 
-function PartnerCardBody({ partner }: { partner: PartnerCardData }) {
+// Design Ref: seepn-buyer-web-p5b.screen-spec.md §3 (BY-13) — exported (unchanged markup) so the
+// bookmarks selection-mode card (components/seepn/BookmarksListClient.tsx) can wrap the exact same
+// body in a <label>+checkbox instead of PartnerCard's own <Link> (selection mode must not navigate
+// away on card click).
+export function PartnerCardBody({ partner }: { partner: PartnerCardData }) {
   return (
     <>
       <h3 className="truncate text-body font-medium text-neutral-900">{partner.company_name_ko || '(회사명 미공개)'}</h3>

@@ -36,6 +36,15 @@
 --      multi-partner behaviour — 1..5 partners inserted into
 --      seepn_inquiry_partner, >5 rejected, duplicate partner ids rejected,
 --      a non-publicly-listed partner id rejected (partner_not_found)
+--   i. (added 2026-09-11, 20260911100000 GAP-C3/EDGE-C11) B-12e operator
+--      curation — admin_set_partner_featured() access control, and the
+--      critical EDGE-C11 property: a partner designated "featured" while it
+--      still satisfies the 3-layer public-listing gate disappears from
+--      public.partner_featured_public THE MOMENT it stops satisfying that
+--      gate (verification revoked / public_listing_state flipped off),
+--      even though its partner_featured_pick.active row is untouched — i.e.
+--      the curation feature cannot be used to route around the same gate
+--      every other buyer-facing surface enforces.
 --
 -- See this directory's README.md for when this file must be updated.
 -- =============================================================================
@@ -96,6 +105,14 @@ insert into public.auth_principal (auth_user_id, principal_kind) values
   ('22222222-2222-2222-2222-222222222b01', 'admin');
 insert into public.admin_user (id, auth_user_id, status, display_name) values
   ('22222222-2222-2222-2222-222222222b01', '22222222-2222-2222-2222-222222222b01', 'active', 'Regtest Admin One');
+
+-- Grant the regtest admin the seeded 'super_admin' role (20260825120000 §16)
+-- so has_menu_permission()-gated RPCs (e.g. admin_set_partner_featured, §i
+-- below) do not spuriously deny — super_admin is the INV-4 exception that
+-- does not consult role_menu_permission at all, so this fixture never needs
+-- updating when a new menu_code/action pair is added by a later migration.
+insert into public.admin_user_role (admin_user_id, role_id)
+select '22222222-2222-2222-2222-222222222b01', r.id from public.role r where r.code = 'super_admin';
 
 -- Partner (login account, used for the principal_kind check and the
 -- partner-session-must-see-zero-rows check on partner_detail_buyer)
@@ -550,6 +567,247 @@ begin
 
   reset role;
   perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+
+-- =============================================================================
+-- §i. B-12e operator curation — admin_set_partner_featured() access control +
+--     EDGE-C11 (added 2026-09-11, 20260911100000 GAP-C3)
+-- =============================================================================
+
+do $$
+begin
+  -- i1: a buyer (non-admin) session must be denied by admin_set_partner_featured().
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a01', false);
+  set role authenticated;
+
+  begin
+    perform public.admin_set_partner_featured('44444444-4444-4444-4444-444444444405'::uuid, true, null);
+    raise exception 'FAIL: i1: a buyer session must NOT be able to call admin_set_partner_featured()' using errcode = 'ZZ001';
+  exception when sqlstate '42501' then
+    raise notice 'PASS: i1: admin_set_partner_featured() raises access_denied (42501) for a buyer session';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- i2: a partner (non-admin) session must also be denied.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c01', false);
+  set role authenticated;
+
+  begin
+    perform public.admin_set_partner_featured('44444444-4444-4444-4444-444444444405'::uuid, true, null);
+    raise exception 'FAIL: i2: a partner session must NOT be able to call admin_set_partner_featured()' using errcode = 'ZZ001';
+  exception when sqlstate '42501' then
+    raise notice 'PASS: i2: admin_set_partner_featured() raises access_denied (42501) for a partner session';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_partner_id uuid;
+  v_active boolean;
+  v_order integer;
+begin
+  -- i3: an active admin CAN feature a fully-gate-satisfying partner (case5),
+  -- and it shows up via public.partner_featured_public.
+  -- request.jwt.claims aal2: admin_set_partner_featured() is gated on
+  -- private.is_aal2() (like every other admin-mutation RPC in this schema),
+  -- which reads auth.jwt()->>'aal' — an aal1-only session (the default when
+  -- only request.jwt.claim.sub is set) would be denied even with the
+  -- super_admin role granted above.
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+
+  select f.partner_id, f.active, f.display_order
+  into v_partner_id, v_active, v_order
+  from public.admin_set_partner_featured('44444444-4444-4444-4444-444444444405'::uuid, true, 0) f;
+
+  if v_partner_id is null or v_active is not true or v_order <> 0 then
+    raise exception 'FAIL: i3: admin_set_partner_featured() must return the upserted (partner_id, active=true, display_order=0) row' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: i3: an active admin can feature a fully-gate-satisfying partner, RPC returns the upserted row';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+end;
+$$;
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444405') = 1,
+  'i4: the featured, fully-gate-satisfying partner (case5) appears in public.partner_featured_public');
+
+do $$
+begin
+  -- i5: featuring a partner that does NOT currently satisfy the 3-layer gate
+  -- (case1: verification_state='submitted', not 'verified') is ALLOWED at
+  -- write time (admin may pre-designate before verification lands) but must
+  -- NOT appear in the public view — the gate is enforced at read time.
+  -- request.jwt.claims aal2: admin_set_partner_featured() is gated on
+  -- private.is_aal2() (like every other admin-mutation RPC in this schema),
+  -- which reads auth.jwt()->>'aal' — an aal1-only session (the default when
+  -- only request.jwt.claim.sub is set) would be denied even with the
+  -- super_admin role granted above.
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+
+  perform public.admin_set_partner_featured('44444444-4444-4444-4444-444444444401'::uuid, true, 1);
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+end;
+$$;
+
+select regtest.assert(
+  (select active from public.partner_featured_pick where partner_id = '44444444-4444-4444-4444-444444444401') = true,
+  'i5a: partner_featured_pick.active=true for the gate-failing partner (write succeeded, as designed)');
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444401') = 0,
+  'i5b: EDGE-C11: a partner that never satisfied the 3-layer gate does NOT appear in public.partner_featured_public, even though its featured-pick row is active=true');
+
+-- =============================================================================
+-- §i (core EDGE-C11 scenario): feature a partner that CURRENTLY satisfies
+-- the gate, confirm it is visible, then flip it private (mirrors the
+-- screen-spec's own EDGE-C11 wording: "그 파트너가 나중에 비공개 전환되거나
+-- 검증이 취소되면 추천 노출에서도 즉시 빠져야 한다") and confirm it
+-- disappears from public.partner_featured_public WITHOUT touching
+-- partner_featured_pick at all.
+-- =============================================================================
+
+do $$
+begin
+  -- request.jwt.claims aal2: admin_set_partner_featured() is gated on
+  -- private.is_aal2() (like every other admin-mutation RPC in this schema),
+  -- which reads auth.jwt()->>'aal' — an aal1-only session (the default when
+  -- only request.jwt.claim.sub is set) would be denied even with the
+  -- super_admin role granted above.
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+
+  -- case6 was inserted in §h as verification_state='verified',
+  -- public_listing_state='on', with a granted public_listing consent — i.e.
+  -- it currently satisfies the 3-layer gate.
+  perform public.admin_set_partner_featured('44444444-4444-4444-4444-444444444406'::uuid, true, 2);
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+end;
+$$;
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444406') = 1,
+  'i6: case6 (currently gate-satisfying) appears in public.partner_featured_public right after being featured');
+
+-- Flip case6 private (as postgres, bypassing RLS — the same fixture-seeding
+-- privilege already used throughout this file). No write to
+-- partner_featured_pick happens here at all.
+update public.partner set public_listing_state = 'off' where id = '44444444-4444-4444-4444-444444444406';
+
+select regtest.assert(
+  (select active from public.partner_featured_pick where partner_id = '44444444-4444-4444-4444-444444444406') = true,
+  'i7: case6''s partner_featured_pick row is UNCHANGED (still active=true) after being made private — this migration never touches that table when a partner''s own state changes');
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444406') = 0,
+  'i8: EDGE-C11 (core case): case6 disappears from public.partner_featured_public THE MOMENT it goes private, even though it is still actively featured in partner_featured_pick — the gate is inherited from partner_list_public, not evaluated separately');
+
+-- Restore case6 to public for good measure (does not affect any assertion
+-- after this point, but keeps the fixture state predictable for anyone
+-- extending this file later).
+update public.partner set public_listing_state = 'on' where id = '44444444-4444-4444-4444-444444444406';
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444406') = 1,
+  'i9: case6 reappears in public.partner_featured_public once public_listing_state is restored to ''on'' (confirms i8 was the gate, not a stale/cached row)');
+
+do $$
+begin
+  -- i10: unsetting (p_featured=false) removes case5 from the public view
+  -- even though case5 itself still fully satisfies the 3-layer gate.
+  -- request.jwt.claims aal2: admin_set_partner_featured() is gated on
+  -- private.is_aal2() (like every other admin-mutation RPC in this schema),
+  -- which reads auth.jwt()->>'aal' — an aal1-only session (the default when
+  -- only request.jwt.claim.sub is set) would be denied even with the
+  -- super_admin role granted above.
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+
+  perform public.admin_set_partner_featured('44444444-4444-4444-4444-444444444405'::uuid, false, null);
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+end;
+$$;
+
+select regtest.assert(
+  (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444405') = 0,
+  'i10: case5 disappears from public.partner_featured_public after being explicitly un-featured (active=false), independent of its own gate status');
+
+select regtest.assert(
+  (select count(*) from private.partner_public_base where id = '44444444-4444-4444-4444-444444444405') = 1,
+  'i10b (sanity): case5 itself is still fully gate-satisfying — i10''s disappearance is caused by un-featuring, not by a gate change');
+
+do $$
+begin
+  -- i11: a non-admin authenticated session (buyer) must see ZERO rows via a
+  -- direct select on partner_featured_pick (admin-only RLS) — the public
+  -- read path is partner_featured_public only.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a01', false);
+  set role authenticated;
+
+  if (select count(*) from public.partner_featured_pick) <> 0 then
+    raise exception 'FAIL: i11: a buyer session must see ZERO rows via a direct select on partner_featured_pick (admin-only RLS)';
+  end if;
+  raise notice 'PASS: i11: a buyer session sees zero rows via a direct select on partner_featured_pick';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- i12: anon must not even be able to query partner_featured_pick directly
+  -- (no SELECT grant at all — mirrors §c3's partner_detail_buyer check).
+  set role anon;
+  begin
+    perform count(*) from public.partner_featured_pick;
+    raise exception 'FAIL: i12: anon must not even be able to query partner_featured_pick (no SELECT grant)';
+  exception when insufficient_privilege then
+    raise notice 'PASS: i12: anon querying partner_featured_pick raises insufficient_privilege (no SELECT grant)';
+  end;
+  reset role;
+end;
+$$;
+
+do $$
+begin
+  -- i13: anon CAN query partner_featured_public (the sanctioned public
+  -- read path) and see the currently-featured, gate-satisfying set.
+  set role anon;
+  if (select count(*) from public.partner_featured_public where id = '44444444-4444-4444-4444-444444444406') <> 1 then
+    raise exception 'FAIL: i13: anon must be able to see case6 via public.partner_featured_public';
+  end if;
+  raise notice 'PASS: i13: anon sees the currently-featured, gate-satisfying partner via public.partner_featured_public';
+  reset role;
 end;
 $$;
 
