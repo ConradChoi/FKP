@@ -33,6 +33,18 @@ export function computeSubmissionGaps(
   partner: PartnerForGapCheck,
   hasBusinessRegistrationCertDocument: boolean,
   hasContact: boolean,
+  // 파트너 표준 카테고리 UX 개선(2026-09-12, screen-spec §6/D-6) — 주 카테고리
+  // (role='primary') 1개 필수 게이트. 기본값 `true`(만족한 것으로 간주)는 이
+  // 백엔드 변경과 동시에 병렬로 진행 중인 프론트엔드 작업이 기존 3-인자 호출부
+  // (app/supplier/profile/layout.tsx, app/admin/(protected)/partners/[id]/
+  // BasicInfoTab.tsx)를 아직 갱신하지 않은 과도기에도 빌드/런타임을 깨지 않기
+  // 위함이다 — 게이트를 실제로 켜려면 호출부가 partner_standard_category에서
+  // role='primary' 존재 여부를 조회해 이 인자로 명시적으로 넘겨야 한다. SQL
+  // 미러(private.partner_profile_submission_gaps, 20260912110000)는 이미
+  // 무조건 이 게이트를 적용하므로, 실제 제출 차단(partner_submit_for_review())은
+  // 이 TS 인자의 기본값과 무관하게 서버에서 강제된다 — 이 TS 함수는 UI 체크리스트
+  // 표시용일 뿐 최종 방어선이 아니다(SQL 함수 자신의 코멘트와 동일 원칙).
+  hasPrimaryCategory = true,
 ): SubmissionGapItem[] {
   const items: SubmissionGapItem[] = [
     { key: 'business_entity_type', label: '법인/개인사업자 구분', satisfied: !!partner.business_entity_type },
@@ -68,6 +80,10 @@ export function computeSubmissionGaps(
   items.push(
     { key: 'business_registration_cert_document', label: '사업자등록증 파일', satisfied: hasBusinessRegistrationCertDocument },
     { key: 'contact', label: '담당자 연락처', satisfied: hasContact },
+    // screen-spec §6/D-6 — SQL 미러(private.partner_profile_submission_gaps)와
+    // 동일한 key('standard_category_primary')를 사용해 lib/supplier/tabGaps.ts의
+    // GAP_KEY_TO_TAB 매핑과 정합을 유지한다.
+    { key: 'standard_category_primary', label: '표준 카테고리(주 1개)', satisfied: hasPrimaryCategory },
   )
 
   return items

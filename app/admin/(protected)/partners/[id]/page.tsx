@@ -148,7 +148,9 @@ export default async function PartnerDetailPage({
       .select('id, consent_type, granted, method, collected_at, recorded_at, evidence_kind')
       .eq('partner_id', id)
       .order('recorded_at', { ascending: false }),
-    supabase.from('partner_standard_category').select('standard_category_id').eq('partner_id', id),
+    // Design Ref: partner-standard-category-picker-redesign.screen-spec.md §5/§9 — role 컬럼도
+    // 함께 조회해 주/서브/레거시 초과분(role is null)을 구분한다.
+    supabase.from('partner_standard_category').select('standard_category_id, role').eq('partner_id', id),
     supabase
       .from('audit_log')
       // BP-28 (privacy-security-officer, P5b 배포 리뷰) — admin_set_partner_featured()
@@ -167,6 +169,14 @@ export default async function PartnerDetailPage({
     // no new RPC needed to read it (spec: "신규 RPC 없이 관리자가 직접 조회 가능").
     supabase.from('partner_featured_pick').select('active').eq('partner_id', id).eq('active', true).maybeSingle(),
   ])
+
+  const categoryRows = categoryLinks ?? []
+  const primaryCategoryId = (categoryRows.find((c) => c.role === 'primary')?.standard_category_id as string | undefined) ?? null
+  const subCategoryIds = categoryRows.filter((c) => c.role === 'sub').map((c) => c.standard_category_id as string)
+  const hasPrimaryCategory = !!primaryCategoryId
+  // screen-spec §9 "관리자 가시성" — 3개 제한 적용 전 데이터의 초과분(role is null)은
+  // 삭제하지 않고 보존되므로, 정리 필요 여부를 판단할 수 있도록 건수만 노출한다.
+  const legacyCategoryOverflowCount = categoryRows.filter((c) => c.role == null).length
 
   let referredByName: string | null = null
   if (partner.referred_by) {
@@ -233,7 +243,10 @@ export default async function PartnerDetailPage({
           consents={(consents ?? []) as PartnerConsentRecord[]}
           auditEntries={(auditEntries ?? []) as AuditLogEntry[]}
           categoryOptions={categoryOptions}
-          selectedCategoryIds={(categoryLinks ?? []).map((c) => c.standard_category_id)}
+          primaryCategoryId={primaryCategoryId}
+          subCategoryIds={subCategoryIds}
+          legacyCategoryOverflowCount={legacyCategoryOverflowCount}
+          hasPrimaryCategory={hasPrimaryCategory}
           canAccessPii={!!context.can_access_pii}
           hasContact={hasContact}
           rejectedPiiPurged={!!rejectedPiiPurged}

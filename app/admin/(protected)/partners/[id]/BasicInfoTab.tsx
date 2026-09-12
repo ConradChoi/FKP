@@ -17,11 +17,13 @@ export function BasicInfoTab({
   partner,
   hasBizCertDocument,
   hasContact,
+  hasPrimaryCategory,
   canUpdate,
 }: {
   partner: PartnerDetail
   hasBizCertDocument: boolean
   hasContact: boolean
+  hasPrimaryCategory: boolean
   canUpdate: boolean
 }) {
   const [form, setForm] = useState({
@@ -73,8 +75,9 @@ export function BasicInfoTab({
         },
         hasBizCertDocument,
         hasContact,
+        hasPrimaryCategory,
       ),
-    [form, partner, hasBizCertDocument, hasContact],
+    [form, partner, hasBizCertDocument, hasContact, hasPrimaryCategory],
   )
   const unmetCount = gaps.filter((g) => !g.satisfied).length
 

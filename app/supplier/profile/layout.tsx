@@ -29,7 +29,7 @@ export default async function SupplierProfileLayout({ children }: { children: Re
     )
   }
 
-  const [{ count: bizCertCount }, { data: contact }, latestNotices] = await Promise.all([
+  const [{ count: bizCertCount }, { data: contact }, latestNotices, { count: primaryCategoryCount }] = await Promise.all([
     supabase
       .from('partner_document')
       .select('id', { count: 'exact', head: true })
@@ -39,11 +39,20 @@ export default async function SupplierProfileLayout({ children }: { children: Re
     // notice-board-v1.0.prd.md §12 N-R18 / screen-spec §4.4 — "별도 함수 신설 불필요", same
     // getPublishedPartnerNotices() the /supplier/notices list uses, with limit=1.
     getPublishedPartnerNotices(1),
+    // Design Ref: partner-standard-category-picker-redesign.screen-spec.md §6/D-6 — "주 카테고리
+    // 1개 필수" 제출 게이트. private.partner_profile_submission_gaps()의 SQL 조건과 동일하게
+    // role='primary' 존재 여부만 확인한다(20260912110000 §6).
+    // P-E(privacy-security-officer, 2026-09-12): partner_standard_category has a composite PK
+    // (partner_id, standard_category_id), no `id` column — selecting 'id' made PostgREST reject
+    // the query, count silently resolved to null, and this gate showed "미입력" forever even for
+    // partners who had picked a primary category. select('partner_id', ...) is a real column.
+    supabase.from('partner_standard_category').select('partner_id', { count: 'exact', head: true }).eq('partner_id', partner.id).eq('role', 'primary'),
   ])
   const latestNotice = latestNotices[0] ?? null
 
   const hasBizCertDocument = (bizCertCount ?? 0) > 0
   const hasContact = contact !== null
+  const hasPrimaryCategory = (primaryCategoryCount ?? 0) > 0
 
   const gaps = computeSubmissionGaps(
     {
@@ -66,6 +75,7 @@ export default async function SupplierProfileLayout({ children }: { children: Re
     },
     hasBizCertDocument,
     hasContact,
+    hasPrimaryCategory,
   )
 
   const unmetTabs = Array.from(tabsWithUnmetGaps(gaps.filter((g) => !g.satisfied).map((g) => g.key)))

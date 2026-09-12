@@ -1,16 +1,18 @@
 'use client'
 
-// Design Ref: screen-spec §4.3 (SUP-10) — 카테고리 선택은 즉시 저장(개별 insert/delete),
-// Vertical A/B 필드는 독립 저장 버튼. ui-spec §3.8 (버티컬 미선택 시 안내카드로 대체, 흐림
+// Design Ref: docs/02-design/features/partner-standard-category-picker-redesign.screen-spec.md
+// (2026-09-12) — 표준 카테고리 선택을 드롭다운(개별 insert/delete)에서 레이어 모달 + 주1·서브2
+// 제한 + 원자적 RPC(partner_set_standard_categories)로 교체(§1.1 D-3, §5.2). Vertical A/B
+// 필드는 기존과 동일하게 독립 저장 버튼. ui-spec §3.8 (버티컬 미선택 시 안내카드로 대체, 흐림
 // 처리 아님) + §9 UI-R7(레퍼런스 프로젝트 자유서술 필드 캡션).
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { getSupplierBrowserClient } from '@/lib/supabase/supplierBrowserClient'
-import { inputClass, primaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
+import { inputClass, primaryButtonClass, secondaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
 import { OEM_ODM_LABELS, PRICING_MODEL_LABELS, REMOTE_ONSITE_LABELS, SERVICE_TYPE_OPTIONS } from '@/lib/admin/partnerLabels'
 import type { CategoryOption } from '@/app/admin/(protected)/partners/categoryOptions'
 import type { PartnerProfile, ReferenceProject } from '@/lib/supplier/types'
-import { CategoryPicker } from '@/components/supplier/CategoryPicker'
+import { CategoryPickerModal, CategoryRoleSummary, useCategoryRoleSelection, type CategoryRoleSelection } from '@/components/supplier/CategoryPickerModal'
 import { useDirtyGuard } from '@/components/supplier/DirtyGuard'
 
 interface VertForm {
@@ -52,16 +54,25 @@ function toVertForm(partner: PartnerProfile): VertForm {
 export function CapabilityForm({
   partner,
   categoryOptions,
-  selectedCategoryIds,
+  initialCategorySelection,
 }: {
   partner: PartnerProfile
   categoryOptions: CategoryOption[]
-  selectedCategoryIds: string[]
+  initialCategorySelection: CategoryRoleSelection
 }) {
   const { setDirty } = useDirtyGuard()
-  const [categoryIds, setCategoryIds] = useState(selectedCategoryIds)
-  const [categorySaving, setCategorySaving] = useState(false)
-  const [categoryError, setCategoryError] = useState<string | null>(null)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+
+  async function commitCategorySelection(next: CategoryRoleSelection): Promise<boolean> {
+    const supabase = getSupplierBrowserClient()
+    const { error } = await supabase.rpc('partner_set_standard_categories', {
+      p_primary_id: next.primaryId,
+      p_sub_ids: next.subIds,
+    })
+    return !error
+  }
+
+  const categorySelection = useCategoryRoleSelection(initialCategorySelection, commitCategorySelection)
 
   const [form, setForm] = useState<VertForm>(() => toVertForm(partner))
   const [customServiceType, setCustomServiceType] = useState('')
@@ -92,35 +103,6 @@ export function CapabilityForm({
   }
   function removeReferenceProject(idx: number) {
     set('reference_projects', form.reference_projects.filter((_, i) => i !== idx))
-  }
-
-  async function handleCategoryChange(nextIds: string[]) {
-    const toAdd = nextIds.filter((id) => !categoryIds.includes(id))
-    const toRemove = categoryIds.filter((id) => !nextIds.includes(id))
-    setCategoryIds(nextIds)
-    setCategorySaving(true)
-    setCategoryError(null)
-    const supabase = getSupplierBrowserClient()
-    try {
-      if (toAdd.length > 0) {
-        const { error } = await supabase
-          .from('partner_standard_category')
-          .insert(toAdd.map((id) => ({ partner_id: partner.id, standard_category_id: id })))
-        if (error) throw error
-      }
-      for (const id of toRemove) {
-        const { error } = await supabase
-          .from('partner_standard_category')
-          .delete()
-          .eq('partner_id', partner.id)
-          .eq('standard_category_id', id)
-        if (error) throw error
-      }
-    } catch {
-      setCategoryError('카테고리 저장에 실패했습니다.')
-    } finally {
-      setCategorySaving(false)
-    }
   }
 
   async function handleSave() {
@@ -161,14 +143,36 @@ export function CapabilityForm({
         <h2 className="text-body font-medium text-neutral-900">표준 카테고리</h2>
         <p className="mt-1 text-label-caption text-neutral-400">선택은 즉시 저장됩니다.</p>
         <div className="mt-2 max-w-lg">
-          <CategoryPicker options={categoryOptions} selectedIds={categoryIds} onChange={handleCategoryChange} />
+          <CategoryRoleSummary
+            options={categoryOptions}
+            selection={categorySelection.selection}
+            onRemovePrimary={categorySelection.removePrimary}
+            onRemoveSub={categorySelection.removeSub}
+          />
         </div>
-        {categorySaving && <p className="mt-1 text-label-caption text-neutral-400">저장 중...</p>}
-        {categoryError && <p className={`mt-1 ${errorTextClass}`}>{categoryError}</p>}
-        {categoryIds.length === 0 && (
-          <p className="mt-2 text-label-caption text-accent-700">카테고리가 선택되지 않았습니다 — 매칭 정확도에 영향을 줍니다.</p>
+        <button type="button" onClick={() => setCategoryModalOpen(true)} className={`${secondaryButtonClass} mt-3`}>
+          카테고리 선택
+        </button>
+        {categorySelection.saving && <p className="mt-1 text-label-caption text-neutral-400">저장 중...</p>}
+        {categorySelection.error && <p className={`mt-1 ${errorTextClass}`}>{categorySelection.error}</p>}
+        {!categorySelection.selection.primaryId && (
+          <p className="mt-2 text-label-caption text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
         )}
       </section>
+
+      <CategoryPickerModal
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        options={categoryOptions}
+        selection={categorySelection.selection}
+        saving={categorySelection.saving}
+        error={categorySelection.error}
+        limitFlash={categorySelection.limitFlash}
+        onSelectFromResults={categorySelection.selectFromResults}
+        onRemovePrimary={categorySelection.removePrimary}
+        onRemoveSub={categorySelection.removeSub}
+        onPromoteToPrimary={categorySelection.promoteToPrimary}
+      />
 
       {!partner.vertical && (
         <div className="rounded-card border border-dashed border-neutral-300 bg-neutral-50 p-6 text-center text-body-sm text-neutral-500">

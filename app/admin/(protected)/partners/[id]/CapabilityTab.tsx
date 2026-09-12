@@ -2,30 +2,65 @@
 
 // Design Ref: screen-spec §2.5.4 "Capability 탭 — Common Core + Vertical A/B". Common Core는
 // BasicInfoTab.tsx로 옮겼으므로(그 파일 헤더 코멘트 참고 — 문서의 중복 "2.5.4" 번호로 인한
-// 구현 판단), 이 탭은 vertical(제품/서비스)에 따라 갈리는 확장 필드와 표준 카테고리 다중선택만
+// 구현 판단), 이 탭은 vertical(제품/서비스)에 따라 갈리는 확장 필드와 표준 카테고리 선택만
 // 다룬다. vertical이 아직 선택되지 않았으면(기본정보 탭에서 먼저 선택) 안내만 표시한다.
+//
+// Design Ref(2026-09-12): partner-standard-category-picker-redesign.screen-spec.md §11 OQ-1
+// (대표 확정) — Admin 대행입력도 파트너 화면과 동일한 레이어 모달 컴포넌트
+// (components/supplier/CategoryPickerModal.tsx)를 재사용한다. 원 스펙 §7의 "Admin은 기존
+// 드롭다운 유지" 전제가 이 확정으로 뒤집혔으므로, 이 탭은 더 이상 로컬 무제한-다중선택
+// CategoryPicker(../CategoryPicker.tsx, 목록 필터 전용으로 남음)를 쓰지 않는다 — 그 파일은
+// PartnerFilters.tsx 전용으로 계속 남긴다(§7 근거 그대로 유지, 필터 모드까지 role/3개 제한을
+// 적용하면 안 되므로).
 import { useState } from 'react'
 import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 import { OEM_ODM_LABELS, PRICING_MODEL_LABELS, REMOTE_ONSITE_LABELS, SERVICE_TYPE_OPTIONS } from '@/lib/admin/partnerLabels'
-import { updatePartnerCapabilityAction, updatePartnerCategoriesAction, type PartnerCapabilityPatch } from './actions'
-import { CategoryPicker } from '../CategoryPicker'
+import { updatePartnerCapabilityAction, setPartnerStandardCategoriesAction, type PartnerCapabilityPatch } from './actions'
+import {
+  CategoryPickerModal,
+  CategoryRoleSummary,
+  useCategoryRoleSelection,
+  type CategoryPickerClassNames,
+  type CategoryRoleSelection,
+} from '@/components/supplier/CategoryPickerModal'
 import type { CategoryOption } from '../categoryOptions'
 import type { PartnerDetail } from './page'
+
+// Admin UI 토큰으로 분기 — CategoryPickerModal.tsx 헤더 코멘트가 설명하는 "제3의 소비자가
+// 생기면 prop 기반으로" 원칙을 여기서 이행한다(adminInputClass 등을 컴포넌트 내부에
+// 하드코딩하지 않는다).
+const ADMIN_CATEGORY_CLASS_NAMES: Partial<CategoryPickerClassNames> = {
+  heading: 'admin-heading-3 text-neutral-900',
+  labelSm: 'admin-label-sm text-neutral-500',
+  bodySm: 'admin-body-sm text-neutral-600',
+  input: adminInputClass,
+  buttonPrimary: adminButtonPrimaryClass,
+  error: 'admin-body-sm text-error',
+}
 
 export function CapabilityTab({
   partner,
   categoryOptions,
-  selectedCategoryIds,
+  primaryCategoryId,
+  subCategoryIds,
+  legacyCategoryOverflowCount,
   canUpdate,
 }: {
   partner: PartnerDetail
   categoryOptions: CategoryOption[]
-  selectedCategoryIds: string[]
+  primaryCategoryId: string | null
+  subCategoryIds: string[]
+  legacyCategoryOverflowCount: number
   canUpdate: boolean
 }) {
-  const [categoryIds, setCategoryIds] = useState(selectedCategoryIds)
-  const [categorySaving, setCategorySaving] = useState(false)
-  const [categoryError, setCategoryError] = useState<string | null>(null)
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+
+  async function commitCategorySelection(next: CategoryRoleSelection): Promise<boolean> {
+    const result = await setPartnerStandardCategoriesAction(partner.id, next.primaryId, next.subIds)
+    return result.success
+  }
+
+  const categorySelection = useCategoryRoleSelection({ primaryId: primaryCategoryId, subIds: subCategoryIds }, commitCategorySelection)
 
   const [form, setForm] = useState({
     moq: partner.moq ?? '',
@@ -77,15 +112,6 @@ export function CapabilityTab({
     set('reference_projects', form.reference_projects.filter((_, i) => i !== idx))
   }
 
-  async function handleSaveCategories(ids: string[]) {
-    setCategoryIds(ids)
-    setCategorySaving(true)
-    setCategoryError(null)
-    const result = await updatePartnerCategoriesAction(partner.id, ids)
-    setCategorySaving(false)
-    if (!result.success) setCategoryError('카테고리 저장 실패')
-  }
-
   async function handleSave() {
     setSaving(true)
     setError(null)
@@ -126,14 +152,43 @@ export function CapabilityTab({
         <h2 className="admin-heading-3 text-neutral-900">표준 카테고리</h2>
         <p className="mt-1 admin-label-sm text-neutral-400">선택은 즉시 저장됩니다.</p>
         <div className="mt-2 max-w-lg">
-          <CategoryPicker options={categoryOptions} selectedIds={categoryIds} onChange={handleSaveCategories} />
+          <CategoryRoleSummary
+            options={categoryOptions}
+            selection={categorySelection.selection}
+            onRemovePrimary={categorySelection.removePrimary}
+            onRemoveSub={categorySelection.removeSub}
+            classNames={ADMIN_CATEGORY_CLASS_NAMES}
+          />
         </div>
-        {categorySaving && <p className="mt-1 admin-label-sm text-neutral-400">저장 중...</p>}
-        {categoryError && <p className="mt-1 admin-label-sm text-error">{categoryError}</p>}
-        {categoryIds.length === 0 && (
-          <p className="mt-2 admin-body-sm text-accent-700">카테고리가 선택되지 않았습니다 — 매칭 정확도에 영향을 줍니다.</p>
+        <button type="button" onClick={() => setCategoryModalOpen(true)} className="mt-3 admin-body-sm text-primary-600 hover:underline">
+          카테고리 선택
+        </button>
+        {categorySelection.saving && <p className="mt-1 admin-label-sm text-neutral-400">저장 중...</p>}
+        {categorySelection.error && <p className="mt-1 admin-body-sm text-error">{categorySelection.error}</p>}
+        {!categorySelection.selection.primaryId && (
+          <p className="mt-2 admin-body-sm text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
+        )}
+        {legacyCategoryOverflowCount > 0 && (
+          <p className="mt-2 admin-label-sm text-neutral-400">
+            레거시 카테고리 {legacyCategoryOverflowCount}개(3개 제한 적용 전 데이터, 정리 필요)
+          </p>
         )}
       </section>
+
+      <CategoryPickerModal
+        open={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        options={categoryOptions}
+        selection={categorySelection.selection}
+        saving={categorySelection.saving}
+        error={categorySelection.error}
+        limitFlash={categorySelection.limitFlash}
+        onSelectFromResults={categorySelection.selectFromResults}
+        onRemovePrimary={categorySelection.removePrimary}
+        onRemoveSub={categorySelection.removeSub}
+        onPromoteToPrimary={categorySelection.promoteToPrimary}
+        classNames={ADMIN_CATEGORY_CLASS_NAMES}
+      />
 
       {!partner.vertical && (
         <p className="admin-body-sm text-neutral-400">

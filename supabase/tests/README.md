@@ -81,6 +81,16 @@ exact list with rationale):
   disappears from `partner_featured_public` the instant it goes private
   (`public_listing_state='off'`), with `partner_featured_pick` itself
   untouched, then reappears once public-listing is restored.
+- **j.** `get_own_partner_inquiry_count()` (SUP-15/P6 dashboard) — self-only
+  aggregate count, cross-partner isolation, zero-count default, non-partner
+  callers fall through to 0.
+- **k.** 표준 카테고리 주1+서브2 재설계 (`partner_set_standard_categories()` /
+  `admin_set_partner_standard_categories()`) — 주 1개 부분 유니크 인덱스, 서브
+  2개 초과 트리거, 원자적 전체 교체, 중복/비활성/미존재 카테고리 거부, "완전
+  해제"(primary=null, subs=[]) 허용, Admin RPC 권한 체크 + 감사로그,
+  `partner_category_public` 뷰의 `role` 컬럼 노출(게이트는 불변), 레거시
+  백필 규칙(created_at 오름차순) 재현, `private.partner_profile_submission_
+  gaps()`의 `standard_category_primary` 게이트.
 
 ## When you MUST re-run this (and update it if it no longer covers your change)
 
@@ -97,6 +107,10 @@ whenever a migration touches any of:
   `public.partner_detail_buyer`, `public.partner_category_public`,
   `public.partner_featured_public` (EDGE-C11 — must stay joined to
   `partner_list_public`, never to `partner` directly).
+- `partner_standard_category`'s `role` column constraints (the partial unique
+  index on `role='primary'`, the sub-limit trigger) or either of
+  `partner_set_standard_categories()` / `admin_set_partner_standard_
+  categories()` / `private.validate_partner_category_selection()`.
 - A `principal_kind` judgment function: `private.is_active_admin()`,
   `private.is_active_partner()`, `private.is_active_buyer()`, or the
   `auth_principal` mutual-exclusion registry itself.

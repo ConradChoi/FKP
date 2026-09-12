@@ -27,6 +27,9 @@ export const GAP_KEY_TO_TAB: Record<string, SupplierTabId> = {
   reference_projects: 'capability',
   business_registration_cert_document: 'documents',
   contact: 'contact',
+  // 파트너 표준 카테고리 UX 개선(2026-09-12, screen-spec §1.1 "수정 대상" 표) —
+  // 표준 카테고리 선택 위젯은 역량정보(Capability) 탭에 있다.
+  standard_category_primary: 'capability',
 }
 
 export function tabsWithUnmetGaps(unmetKeys: string[]): Set<SupplierTabId> {

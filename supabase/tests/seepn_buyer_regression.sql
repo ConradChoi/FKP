@@ -52,6 +52,14 @@
 --      (OQ-D2), zero-inquiry default, and non-partner callers (buyer/admin/
 --      anon) all falling through to 0 or an EXECUTE-grant denial exactly
 --      like get_own_partner_bookmark_count().
+--   k. (added 2026-09-12, 20260912110000, 표준 카테고리 주1+서브2 재설계)
+--      partner_set_standard_categories() / admin_set_partner_standard_
+--      categories() — 주 1개 부분 유니크 인덱스, 서브 2개 초과 트리거, 원자적
+--      전체 교체(직전 선택을 실제로 지우고 새로 넣는지), 중복/비활성/미존재
+--      카테고리 거부, "완전 해제"(primary=null, subs=[]) 허용, Admin RPC의
+--      권한 체크 + 감사로그, partner_category_public 뷰의 role 컬럼 노출,
+--      그리고 레거시 백필 규칙(created_at 오름차순 1번째=primary,
+--      2~3번째=sub, 4번째 이후는 role=null로 보존) 재현 검증.
 --
 -- See this directory's README.md for when this file must be updated.
 -- =============================================================================
@@ -956,6 +964,572 @@ begin
     raise notice 'PASS: j5: anon calling get_own_partner_inquiry_count() raises insufficient_privilege (no EXECUTE grant)';
   end;
   reset role;
+end;
+$$;
+
+
+-- =============================================================================
+-- §k. 표준 카테고리 주1+서브2 재설계 (added 2026-09-12, 20260912110000)
+-- =============================================================================
+
+-- Fixtures: 5 active standard_category rows + 1 inactive, 2 partner-login
+-- accounts each owning one partner row (independent of earlier sections).
+insert into public.standard_category (id, source, is_active) values
+  ('66666666-6666-6666-6666-666666666601', 'narajangter_standard', true),  -- catA
+  ('66666666-6666-6666-6666-666666666602', 'narajangter_standard', true),  -- catB
+  ('66666666-6666-6666-6666-666666666603', 'narajangter_standard', true),  -- catC
+  ('66666666-6666-6666-6666-666666666604', 'narajangter_standard', true),  -- catD
+  ('66666666-6666-6666-6666-666666666605', 'narajangter_standard', false); -- catF (inactive)
+
+insert into auth.users (id, email, email_confirmed_at) values
+  ('33333333-3333-3333-3333-333333333c04', 'regtest-partner-4@example.test', now()),
+  ('33333333-3333-3333-3333-333333333c05', 'regtest-partner-5@example.test', now());
+
+insert into public.auth_principal (auth_user_id, principal_kind) values
+  ('33333333-3333-3333-3333-333333333c04', 'partner'),
+  ('33333333-3333-3333-3333-333333333c05', 'partner');
+
+insert into public.partner_account (id, auth_user_id, status, display_name) values
+  ('33333333-3333-3333-3333-333333333c04', '33333333-3333-3333-3333-333333333c04', 'active', 'Regtest Partner Four (category-owner)'),
+  ('33333333-3333-3333-3333-333333333c05', '33333333-3333-3333-3333-333333333c05', 'active', 'Regtest Partner Five (admin-managed)');
+
+-- case21: self-service, owned by c04, and made fully public-listing-gate-
+-- satisfying so §k12 (partner_category_public exposure) can reuse it.
+insert into public.partner (id, owner_account_id, intake_source, verification_state, public_listing_state, company_name_ko, vertical)
+values
+  ('44444444-4444-4444-4444-444444444421', '33333333-3333-3333-3333-333333333c04', 'self_service', 'verified', 'on', 'Regtest Case21 CategoryOwner Co', 'product'),
+  ('44444444-4444-4444-4444-444444444422', '33333333-3333-3333-3333-333333333c05', 'self_service', 'draft',    'off','Regtest Case22 AdminManaged Co',  'product');
+
+insert into public.partner_consent (partner_id, consent_type, granted, method, collected_at)
+values ('44444444-4444-4444-4444-444444444421', 'public_listing', true, 'online_self', now());
+
+do $$
+declare
+  v_primary_count integer;
+  v_sub_count integer;
+begin
+  -- k1: partner Four sets primary=catA + sub={catB,catC} via the self-service
+  -- RPC — all 3 rows land with the correct role.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+
+  perform public.partner_set_standard_categories(
+    '66666666-6666-6666-6666-666666666601',
+    array['66666666-6666-6666-6666-666666666602', '66666666-6666-6666-6666-666666666603']::uuid[]
+  );
+
+  select count(*) into v_primary_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role = 'primary';
+  select count(*) into v_sub_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role = 'sub';
+  if v_primary_count <> 1 or v_sub_count <> 2 then
+    raise exception 'FAIL: k1: expected 1 primary + 2 sub rows after partner_set_standard_categories, got % primary / % sub', v_primary_count, v_sub_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k1: partner_set_standard_categories writes exactly 1 primary + 2 sub rows';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_old_present integer;
+  v_new_primary uuid;
+  v_total integer;
+begin
+  -- k2: calling the RPC again with a DIFFERENT final state atomically
+  -- replaces the previous selection (D-3) — old rows gone, only the new
+  -- state remains, in the same statement.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+
+  perform public.partner_set_standard_categories('66666666-6666-6666-6666-666666666604', '{}'::uuid[]);
+
+  select count(*) into v_old_present from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421'
+      and standard_category_id in ('66666666-6666-6666-6666-666666666601', '66666666-6666-6666-6666-666666666602', '66666666-6666-6666-6666-666666666603')
+      and role is not null;
+  select count(*) into v_total from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role is not null;
+  select standard_category_id into v_new_primary from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role = 'primary';
+
+  if v_old_present <> 0 or v_total <> 1 or v_new_primary <> '66666666-6666-6666-6666-666666666604' then
+    raise exception 'FAIL: k2: atomic replace must remove every previous role-tagged row and leave only the new primary, got % old rows / % total / new_primary=%', v_old_present, v_total, v_new_primary using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k2: partner_set_standard_categories atomically replaces the entire prior selection';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- k3: more than 2 sub ids is rejected.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+  begin
+    perform public.partner_set_standard_categories(
+      '66666666-6666-6666-6666-666666666601',
+      array['66666666-6666-6666-6666-666666666602', '66666666-6666-6666-6666-666666666603', '66666666-6666-6666-6666-666666666604']::uuid[]
+    );
+    raise exception 'FAIL: k3: 3 sub ids must be rejected (max 2)' using errcode = 'ZZ001';
+  exception when sqlstate 'P0001' then
+    raise notice 'PASS: k3: > 2 sub ids raises (too_many_sub_categories): %', sqlerrm;
+  end;
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- k4: same category as both primary and sub is rejected.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+  begin
+    perform public.partner_set_standard_categories(
+      '66666666-6666-6666-6666-666666666601',
+      array['66666666-6666-6666-6666-666666666601']::uuid[]
+    );
+    raise exception 'FAIL: k4: primary id duplicated inside sub_ids must be rejected' using errcode = 'ZZ001';
+  exception when sqlstate 'P0001' then
+    raise notice 'PASS: k4: primary id duplicated in sub_ids raises (duplicate_category_role): %', sqlerrm;
+  end;
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- k5: sub ids without a primary is rejected (screen-spec §6 "서브만 있고
+  -- 주가 없는 상태" defensive check) — NOT the "full clear" escape hatch,
+  -- because sub_ids is non-empty here.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+  begin
+    perform public.partner_set_standard_categories(null, array['66666666-6666-6666-6666-666666666602']::uuid[]);
+    raise exception 'FAIL: k5: sub ids with a null primary must be rejected' using errcode = 'ZZ001';
+  exception when sqlstate 'P0001' then
+    raise notice 'PASS: k5: sub ids with null primary raises (sub_category_requires_primary): %', sqlerrm;
+  end;
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_invalid_uuid uuid := '99999999-9999-9999-9999-999999999999';
+begin
+  -- k6: a nonexistent / inactive category id is rejected for both primary
+  -- and sub roles.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+
+  begin
+    perform public.partner_set_standard_categories(v_invalid_uuid, '{}'::uuid[]);
+    raise exception 'FAIL: k6a: a nonexistent primary category id must be rejected' using errcode = 'ZZ001';
+  exception when sqlstate 'P0002' then
+    raise notice 'PASS: k6a: nonexistent primary category id raises (invalid_primary_category): %', sqlerrm;
+  end;
+
+  begin
+    perform public.partner_set_standard_categories('66666666-6666-6666-6666-666666666605', '{}'::uuid[]);
+    raise exception 'FAIL: k6b: an inactive (is_active=false) primary category id must be rejected' using errcode = 'ZZ001';
+  exception when sqlstate 'P0002' then
+    raise notice 'PASS: k6b: inactive primary category id raises (invalid_primary_category): %', sqlerrm;
+  end;
+
+  begin
+    perform public.partner_set_standard_categories('66666666-6666-6666-6666-666666666601', array['66666666-6666-6666-6666-666666666605']::uuid[]);
+    raise exception 'FAIL: k6c: an inactive sub category id must be rejected' using errcode = 'ZZ001';
+  exception when sqlstate 'P0002' then
+    raise notice 'PASS: k6c: inactive sub category id raises (invalid_sub_category): %', sqlerrm;
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_total integer;
+begin
+  -- k7: "full clear" (primary=null, subs=[]) is the one allowed null-primary
+  -- shape — screen-spec EDGE-9 / §9 "카테고리 0개 선택" must stay reachable.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+
+  perform public.partner_set_standard_categories(null, '{}'::uuid[]);
+
+  select count(*) into v_total from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role is not null;
+  if v_total <> 0 then
+    raise exception 'FAIL: k7: full-clear call (null, {}) must leave zero role-tagged rows, got %', v_total using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k7: partner_set_standard_categories(null, {}) fully clears the selection (0 selected state stays reachable)';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- k8: the partial unique index rejects a second directly-inserted
+  -- role='primary' row for the same partner (bypassing the RPC, run as the
+  -- unrestricted migration role) — the DB-level backstop behind the RPC's
+  -- own application-level check.
+  insert into public.partner_standard_category (partner_id, standard_category_id, role)
+  values ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666601', 'primary');
+  begin
+    insert into public.partner_standard_category (partner_id, standard_category_id, role)
+    values ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666602', 'primary');
+    raise exception 'FAIL: k8: a second role=primary row for the same partner must violate the partial unique index' using errcode = 'ZZ001';
+  exception when unique_violation then
+    raise notice 'PASS: k8: idx_partner_standard_category_one_primary rejects a 2nd primary row for the same partner';
+  end;
+end;
+$$;
+
+do $$
+begin
+  -- k9: the sub-limit trigger rejects a 3rd directly-inserted role='sub' row
+  -- for the same partner.
+  insert into public.partner_standard_category (partner_id, standard_category_id, role)
+  values
+    ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666602', 'sub'),
+    ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666603', 'sub');
+  begin
+    insert into public.partner_standard_category (partner_id, standard_category_id, role)
+    values ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666604', 'sub');
+    raise exception 'FAIL: k9: a 3rd role=sub row for the same partner must be rejected by the trigger' using errcode = 'ZZ001';
+  exception when sqlstate 'P0001' then
+    raise notice 'PASS: k9: trg_partner_category_role_limits rejects a 3rd sub row for the same partner: %', sqlerrm;
+  end;
+
+  -- Clean up this raw-insert fixture state so it doesn't leak into k10+.
+  delete from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444421';
+end;
+$$;
+
+do $$
+begin
+  -- k10: a non-admin session (a plain partner login) cannot call the Admin
+  -- RPC at all.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+  begin
+    perform public.admin_set_partner_standard_categories(
+      '44444444-4444-4444-4444-444444444422', '66666666-6666-6666-6666-666666666601', '{}'::uuid[]
+    );
+    raise exception 'FAIL: k10: a partner session must not be able to call admin_set_partner_standard_categories' using errcode = 'ZZ001';
+  exception when sqlstate '42501' then
+    raise notice 'PASS: k10: a partner session calling admin_set_partner_standard_categories raises access_denied (42501)';
+  end;
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_primary_count integer;
+  v_sub_count integer;
+  v_audit_count integer;
+begin
+  -- k11: an admin session (super_admin, from §b's fixture) CAN call the
+  -- Admin RPC for an arbitrary partner id, and it writes the same
+  -- role-tagged shape + an audit_log row (PSO-2). request.jwt.claims aal2:
+  -- admin_set_partner_standard_categories() is gated on private.is_aal2()
+  -- (like every other admin-mutation RPC in this schema, see i3's fixture).
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+
+  perform public.admin_set_partner_standard_categories(
+    '44444444-4444-4444-4444-444444444422',
+    '66666666-6666-6666-6666-666666666601',
+    array['66666666-6666-6666-6666-666666666602']::uuid[]
+  );
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+
+  -- Verification reads run AFTER `reset role` (back to the unrestricted
+  -- migration superuser) — partner_standard_category's admin SELECT policy
+  -- itself requires private.is_aal2(), and is_aal2() is a plain (non
+  -- SECURITY DEFINER) function that needs schema `auth` USAGE the bare
+  -- `authenticated` role doesn't have in this bootstrap stub. Every other
+  -- admin-path verification in this file (e.g. i3) sidesteps this the same
+  -- way, by reading the RPC's own RETURNING/RETURN value instead of a
+  -- separate post-call SELECT while still `set role authenticated`.
+  select count(*) into v_primary_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444422' and role = 'primary';
+  select count(*) into v_sub_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444422' and role = 'sub';
+  if v_primary_count <> 1 or v_sub_count <> 1 then
+    raise exception 'FAIL: k11a: admin_set_partner_standard_categories must write 1 primary + 1 sub row, got % / %', v_primary_count, v_sub_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k11a: an admin (super_admin) session can call admin_set_partner_standard_categories for an arbitrary partner';
+
+  select count(*) into v_audit_count from public.audit_log
+    where action = 'admin_partner.update'
+      and target_table = 'partner_standard_category'
+      and target_id = '44444444-4444-4444-4444-444444444422';
+  if v_audit_count < 1 then
+    raise exception 'FAIL: k11b: admin_set_partner_standard_categories must write an audit_log row (PSO-2)' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k11b: admin_set_partner_standard_categories writes an audit_log row (action=admin_partner.update)';
+end;
+$$;
+
+do $$
+declare
+  v_role text;
+begin
+  -- k12: partner_category_public now exposes the role column (OQ-2), still
+  -- gated by the same 3-layer public-listing join (D-8 unchanged) — case21
+  -- (verified/on/consent-granted, from k7 onward has 0 categories though, so
+  -- re-seed it here with a role='primary' row directly to check exposure).
+  insert into public.partner_standard_category (partner_id, standard_category_id, role)
+  values ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666601', 'primary');
+
+  select role into v_role from public.partner_category_public
+    where partner_id = '44444444-4444-4444-4444-444444444421' and standard_category_id = '66666666-6666-6666-6666-666666666601';
+  if v_role is distinct from 'primary' then
+    raise exception 'FAIL: k12a: partner_category_public must expose role=''primary'' for case21''s designated category, got %', v_role using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k12a: partner_category_public exposes the role column for a gate-satisfying partner';
+
+  -- case22 is draft/off (never satisfied the 3-layer gate) — its k11 rows
+  -- must NOT leak through partner_category_public despite having role data.
+  if exists (select 1 from public.partner_category_public where partner_id = '44444444-4444-4444-4444-444444444422') then
+    raise exception 'FAIL: k12b: partner_category_public must not expose a non-public-listed partner (case22) even though it has role-tagged rows' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k12b: partner_category_public still excludes a gate-FAILING partner (case22) — role column addition did not weaken the join gate';
+end;
+$$;
+
+do $$
+declare
+  v_total_rows integer;
+  v_role1 text;
+  v_role2 text;
+  v_role3 text;
+  v_role4 text;
+begin
+  -- k13: reproduces the OQ-3/OQ-4 backfill rule (created_at ascending,
+  -- 1st=primary, 2nd-3rd=sub, 4th+ preserved with role=null) by replaying
+  -- the exact same ranked-UPDATE pattern the migration's one-time backfill
+  -- used (20260912110000 §2), against freshly raw-inserted "legacy-style"
+  -- rows (role left null, as every pre-migration row was). This can't
+  -- exercise the migration's own backfill statement a second time (it only
+  -- runs once, already applied to an empty table earlier in this same
+  -- replay) — it verifies the RANKING LOGIC ITSELF produces the documented
+  -- outcome, which is the part most likely to have an off-by-one bug.
+  insert into public.partner (id, owner_account_id, intake_source, verification_state, public_listing_state, company_name_ko, vertical)
+  values ('44444444-4444-4444-4444-444444444423', null, 'self_service', 'draft', 'off', 'Regtest Case23 LegacyOverflow Co', 'product');
+
+  insert into public.partner_standard_category (partner_id, standard_category_id, created_at, role) values
+    ('44444444-4444-4444-4444-444444444423', '66666666-6666-6666-6666-666666666601', now() - interval '5 days', null),
+    ('44444444-4444-4444-4444-444444444423', '66666666-6666-6666-6666-666666666602', now() - interval '4 days', null),
+    ('44444444-4444-4444-4444-444444444423', '66666666-6666-6666-6666-666666666603', now() - interval '3 days', null),
+    ('44444444-4444-4444-4444-444444444423', '66666666-6666-6666-6666-666666666604', now() - interval '2 days', null);
+
+  with ranked as (
+    select
+      partner_id, standard_category_id,
+      row_number() over (partition by partner_id order by created_at asc, standard_category_id asc) as rn
+    from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444423'
+  )
+  update public.partner_standard_category psc
+  set role = case when r.rn = 1 then 'primary' when r.rn in (2, 3) then 'sub' else null end
+  from ranked r
+  where r.partner_id = psc.partner_id and r.standard_category_id = psc.standard_category_id;
+
+  select role into v_role1 from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444423' and standard_category_id = '66666666-6666-6666-6666-666666666601';
+  select role into v_role2 from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444423' and standard_category_id = '66666666-6666-6666-6666-666666666602';
+  select role into v_role3 from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444423' and standard_category_id = '66666666-6666-6666-6666-666666666603';
+  select role into v_role4 from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444423' and standard_category_id = '66666666-6666-6666-6666-666666666604';
+
+  if v_role1 <> 'primary' or v_role2 <> 'sub' or v_role3 <> 'sub' or v_role4 is not distinct from 'sub' then
+    raise exception 'FAIL: k13: backfill ranking must yield primary/sub/sub/null in created_at order, got %/%/%/%', v_role1, v_role2, v_role3, v_role4 using errcode = 'ZZ001';
+  end if;
+  if v_role4 is not null then
+    raise exception 'FAIL: k13: the 4th (overflow) row must be preserved with role=null (not deleted, not defaulted to sub), got %', v_role4 using errcode = 'ZZ001';
+  end if;
+
+  select count(*) into v_total_rows from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444423';
+  raise notice 'PASS: k13: backfill ranking = primary/sub/sub/null (created_at ascending, overflow preserved not deleted, % rows total kept)', v_total_rows;
+end;
+$$;
+
+do $$
+declare
+  v_gaps text[];
+  v_partner public.partner%rowtype;
+begin
+  -- k14: private.partner_profile_submission_gaps() now includes
+  -- 'standard_category_primary' when the partner has no role='primary' row,
+  -- and drops it once one exists (screen-spec §6/D-6). Dedicated case24
+  -- fixture (NOT case23 — that one already got a role='primary' row from
+  -- k13's backfill-ranking replay).
+  insert into public.partner (id, owner_account_id, intake_source, verification_state, public_listing_state, company_name_ko, vertical)
+  values ('44444444-4444-4444-4444-444444444424', null, 'self_service', 'draft', 'off', 'Regtest Case24 GateCheck Co', 'product');
+
+  select * into v_partner from public.partner where id = '44444444-4444-4444-4444-444444444424';
+
+  v_gaps := private.partner_profile_submission_gaps(v_partner);
+  if not ('standard_category_primary' = any(v_gaps)) then
+    raise exception 'FAIL: k14a: a partner with no role=primary row must have standard_category_primary in its submission gaps' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k14a: partner_profile_submission_gaps() flags standard_category_primary when no primary category is set';
+
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  perform set_config('request.jwt.claims', '{"aal":"aal2"}', false);
+  set role authenticated;
+  perform public.admin_set_partner_standard_categories(
+    '44444444-4444-4444-4444-444444444424', '66666666-6666-6666-6666-666666666601', '{}'::uuid[]
+  );
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+  perform set_config('request.jwt.claims', '', false);
+
+  select * into v_partner from public.partner where id = '44444444-4444-4444-4444-444444444424';
+  v_gaps := private.partner_profile_submission_gaps(v_partner);
+  if 'standard_category_primary' = any(v_gaps) then
+    raise exception 'FAIL: k14b: standard_category_primary must clear once a role=primary row exists' using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k14b: partner_profile_submission_gaps() clears standard_category_primary once a primary category is set';
+end;
+$$;
+
+
+do $$
+begin
+  -- k15: qa-reviewer 지적 수정 검증 — role=null 직접 insert 우회 경로 차단
+  -- (20260912110000 §7). 파트너 자기 세션(authenticated + owns_partner
+  -- 조건을 만족하는 c04/case21)으로 partner_standard_category에 직접
+  -- INSERT를 시도하면, self_insert 정책이 drop되었을 뿐 아니라 INSERT
+  -- grant 자체가 revoke되었으므로 RLS 평가 이전에 권한 오류로 거부되어야
+  -- 한다(insufficient_privilege) — role='primary'/'sub'뿐 아니라
+  -- role=null로도 절대 뚫려서는 안 된다는 것이 이번 결함의 핵심이므로
+  -- role=null로 시도한다.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+  begin
+    insert into public.partner_standard_category (partner_id, standard_category_id, role)
+    values ('44444444-4444-4444-4444-444444444421', '66666666-6666-6666-6666-666666666604', null);
+    raise exception 'FAIL: k15a: a partner session must NOT be able to directly INSERT into partner_standard_category (even with role=null)' using errcode = 'ZZ001';
+  exception when insufficient_privilege then
+    raise notice 'PASS: k15a: partner session direct INSERT (role=null) into partner_standard_category raises insufficient_privilege (no INSERT grant)';
+  end;
+
+  -- k15b: 같은 세션으로 DELETE 직접 시도도 동일하게 거부되어야 한다.
+  begin
+    delete from public.partner_standard_category where partner_id = '44444444-4444-4444-4444-444444444421';
+    raise exception 'FAIL: k15b: a partner session must NOT be able to directly DELETE from partner_standard_category' using errcode = 'ZZ001';
+  exception when insufficient_privilege then
+    raise notice 'PASS: k15b: partner session direct DELETE from partner_standard_category raises insufficient_privilege (no DELETE grant)';
+  end;
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_primary_count integer;
+begin
+  -- k15c: 위 grant/policy 무력화 이후에도 RPC 경유 쓰기는 여전히 정상
+  -- 동작해야 한다(SECURITY DEFINER는 함수 소유자 권한으로 실행되므로
+  -- GRANT/RLS와 무관 — partner_featured_pick/admin_set_partner_featured와
+  -- 동일 원칙). k7에서 case21은 0개로 비워졌으므로 여기서 다시 채워
+  -- 검증한다.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c04', false);
+  set role authenticated;
+
+  perform public.partner_set_standard_categories('66666666-6666-6666-6666-666666666601', '{}'::uuid[]);
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+
+  select count(*) into v_primary_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444421' and role = 'primary';
+  if v_primary_count <> 1 then
+    raise exception 'FAIL: k15c: partner_set_standard_categories() must still write via SECURITY DEFINER despite the direct-write grant/policy revocation, got % primary rows', v_primary_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: k15c: partner_set_standard_categories() RPC still writes normally after direct INSERT/DELETE grants+policies were revoked';
+end;
+$$;
+
+
+-- k16: P-A (privacy-security-officer, 2026-09-12, found before this migration's first
+-- production deploy) — re-selecting a legacy role=null overflow category as the new
+-- primary/sub must NOT fail with a PK violation. The PK on partner_standard_category is
+-- (partner_id, standard_category_id); the original delete-then-insert only deleted
+-- `role is not null` rows, so re-choosing a role=null row collided with the insert of
+-- that same (partner_id, standard_category_id) pair. Fixed by also deleting the
+-- specific row(s) being re-selected, regardless of their current role.
+insert into auth.users (id, email, email_confirmed_at) values
+  ('33333333-3333-3333-3333-333333333c06', 'regtest-partner-6@example.test', now());
+insert into public.auth_principal (auth_user_id, principal_kind) values
+  ('33333333-3333-3333-3333-333333333c06', 'partner');
+insert into public.partner_account (id, auth_user_id, status, display_name) values
+  ('33333333-3333-3333-3333-333333333c06', '33333333-3333-3333-3333-333333333c06', 'active', 'Regtest Partner Six (legacy-reselect)');
+insert into public.partner (id, owner_account_id, intake_source, verification_state, public_listing_state, company_name_ko, vertical) values
+  ('44444444-4444-4444-4444-444444444426', '33333333-3333-3333-3333-333333333c06', 'self_service', 'draft', 'off', 'Regtest Case26 LegacyReselect Co', 'product');
+
+-- Four pre-existing legacy rows, exactly the shape the 20260912110000 backfill would have
+-- left behind for a partner who had 4+ categories before this migration ever ran.
+insert into public.partner_standard_category (partner_id, standard_category_id, created_at, role) values
+  ('44444444-4444-4444-4444-444444444426', '66666666-6666-6666-6666-666666666601', now() - interval '4 days', 'primary'),
+  ('44444444-4444-4444-4444-444444444426', '66666666-6666-6666-6666-666666666602', now() - interval '3 days', 'sub'),
+  ('44444444-4444-4444-4444-444444444426', '66666666-6666-6666-6666-666666666603', now() - interval '2 days', 'sub'),
+  ('44444444-4444-4444-4444-444444444426', '66666666-6666-6666-6666-666666666604', now() - interval '1 day', null);
+
+do $$
+declare
+  v_role text;
+  v_count integer;
+begin
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c06', false);
+  set role authenticated;
+
+  -- Re-select the legacy role=null row (...604) as the NEW primary. Before the P-A fix,
+  -- this raised 23505 (duplicate key) because only role IS NOT NULL rows were deleted, so
+  -- the insert of (partner, 604, 'primary') collided with the surviving (partner, 604, null)
+  -- row.
+  perform public.partner_set_standard_categories(
+    '66666666-6666-6666-6666-666666666604',
+    array['66666666-6666-6666-6666-666666666601']::uuid[]
+  );
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+
+  select role into v_role from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444426' and standard_category_id = '66666666-6666-6666-6666-666666666604';
+  if v_role <> 'primary' then
+    raise exception 'FAIL: k16: re-selected legacy category must become primary, got role=%', v_role using errcode = 'ZZ001';
+  end if;
+
+  select count(*) into v_count from public.partner_standard_category
+    where partner_id = '44444444-4444-4444-4444-444444444426';
+  if v_count <> 2 then
+    raise exception 'FAIL: k16: expected exactly 2 role-tagged rows after the swap (604=primary, 601=sub), got % total rows', v_count using errcode = 'ZZ001';
+  end if;
+
+  raise notice 'PASS: k16: re-selecting a legacy role=null overflow category no longer raises a PK violation (P-A fix verified)';
 end;
 $$;
 

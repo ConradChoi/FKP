@@ -28,6 +28,7 @@ interface SearchParams {
   serviceTypes?: string
   sort?: string
   page?: string
+  primaryOnly?: string
 }
 
 export default async function SeepnPartnersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -54,10 +55,13 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
     const selectedIds = sp.category.split(',').filter(Boolean)
     if (selectedIds.length > 0) {
       const expandedIds = expandCategoryIdsWithDescendants(categoryTree, selectedIds)
-      const { data: links } = await supabase
-        .from('partner_category_public')
-        .select('partner_id')
-        .in('standard_category_id', expandedIds)
+      // Design Ref: partner-standard-category-picker-redesign.screen-spec.md §8/§11 OQ-2
+      // (2026-09-12 대표 확정) — "주력분야만 보기" 체크 시 partner_category_public.role='primary'
+      // 조건을 추가한다. 카테고리 필터 자체가 없으면(sp.category 미지정) 이 토글은 적용할 대상이
+      // 없으므로 조용히 무시된다(D-8 "기존 그대로 전체 노출" 기본 동작 유지).
+      let categoryLinkQuery = supabase.from('partner_category_public').select('partner_id').in('standard_category_id', expandedIds)
+      if (sp.primaryOnly === '1') categoryLinkQuery = categoryLinkQuery.eq('role', 'primary')
+      const { data: links } = await categoryLinkQuery
       partnerIdFilter = Array.from(new Set((links ?? []).map((l: { partner_id: string }) => l.partner_id)))
     }
   }
@@ -146,6 +150,7 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
     vertical: sp.vertical,
     serviceTypes: sp.serviceTypes,
     sort: sp.sort,
+    primaryOnly: sp.primaryOnly,
   }
 
   const hasAnyFilter = Boolean(sp.q || sp.category || sp.region || sp.languages || sp.overseas || sp.vertical || sp.serviceTypes)

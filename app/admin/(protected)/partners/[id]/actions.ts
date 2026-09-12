@@ -220,35 +220,25 @@ export async function updatePartnerCapabilityAction(
   return { success: true, data: { updatedAt: updated.updated_at as string } }
 }
 
-export async function updatePartnerCategoriesAction(partnerId: string, categoryIds: string[]): Promise<ActionResult> {
+// Design Ref: partner-standard-category-picker-redesign.screen-spec.md §5.3/§7/OQ-1 — 기존
+// diff 기반 insert/delete(updatePartnerCategoriesAction)를 폐기하고, 원자적 교체 RPC
+// admin_set_partner_standard_categories(20260912110000)를 호출한다. 이 RPC는 주 1개(필수
+// 아님 — 완전 해제는 예외적으로 허용됨) + 서브 최대 2개 검증을 서버에서 강제하고 감사로그도
+// 남긴다(PSO-2).
+export async function setPartnerStandardCategoriesAction(
+  partnerId: string,
+  primaryId: string | null,
+  subIds: string[],
+): Promise<ActionResult> {
   const supabase = await getSupabaseAuthServerClient()
   if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
 
-  const { data: existing, error: existingError } = await supabase
-    .from('partner_standard_category')
-    .select('standard_category_id')
-    .eq('partner_id', partnerId)
-  if (existingError) return { success: false, error: existingError.message, errorCode: 'UPDATE_FAILED' }
-
-  const existingIds = new Set((existing ?? []).map((r) => r.standard_category_id))
-  const nextIds = new Set(categoryIds)
-  const toAdd = categoryIds.filter((id) => !existingIds.has(id))
-  const toRemove = Array.from(existingIds).filter((id) => !nextIds.has(id))
-
-  if (toRemove.length > 0) {
-    const { error } = await supabase
-      .from('partner_standard_category')
-      .delete()
-      .eq('partner_id', partnerId)
-      .in('standard_category_id', toRemove)
-    if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
-  }
-  if (toAdd.length > 0) {
-    const { error } = await supabase
-      .from('partner_standard_category')
-      .insert(toAdd.map((standard_category_id) => ({ partner_id: partnerId, standard_category_id })))
-    if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
-  }
+  const { error } = await supabase.rpc('admin_set_partner_standard_categories', {
+    p_partner_id: partnerId,
+    p_primary_id: primaryId,
+    p_sub_ids: subIds,
+  })
+  if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
 
   revalidatePath(`/admin/partners/${partnerId}`)
   revalidatePath('/admin/partners')

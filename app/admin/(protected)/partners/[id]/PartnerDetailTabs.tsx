@@ -30,7 +30,10 @@ export function PartnerDetailTabs({
   consents,
   auditEntries,
   categoryOptions,
-  selectedCategoryIds,
+  primaryCategoryId,
+  subCategoryIds,
+  legacyCategoryOverflowCount,
+  hasPrimaryCategory,
   canAccessPii,
   hasContact,
   rejectedPiiPurged,
@@ -43,7 +46,10 @@ export function PartnerDetailTabs({
   consents: PartnerConsentRecord[]
   auditEntries: AuditLogEntry[]
   categoryOptions: CategoryOption[]
-  selectedCategoryIds: string[]
+  primaryCategoryId: string | null
+  subCategoryIds: string[]
+  legacyCategoryOverflowCount: number
+  hasPrimaryCategory: boolean
   canAccessPii: boolean
   hasContact: boolean
   rejectedPiiPurged: boolean
@@ -72,9 +78,24 @@ export function PartnerDetailTabs({
       </div>
 
       <div className="mt-4">
-        {tab === 'basic' && <BasicInfoTab partner={partner} hasBizCertDocument={hasBizCertDocument} hasContact={hasContact} canUpdate={canUpdate} />}
+        {tab === 'basic' && (
+          <BasicInfoTab
+            partner={partner}
+            hasBizCertDocument={hasBizCertDocument}
+            hasContact={hasContact}
+            hasPrimaryCategory={hasPrimaryCategory}
+            canUpdate={canUpdate}
+          />
+        )}
         {tab === 'capability' && (
-          <CapabilityTab partner={partner} categoryOptions={categoryOptions} selectedCategoryIds={selectedCategoryIds} canUpdate={canUpdate} />
+          <CapabilityTab
+            partner={partner}
+            categoryOptions={categoryOptions}
+            primaryCategoryId={primaryCategoryId}
+            subCategoryIds={subCategoryIds}
+            legacyCategoryOverflowCount={legacyCategoryOverflowCount}
+            canUpdate={canUpdate}
+          />
         )}
         {tab === 'documents' && (
           <DocumentsTab

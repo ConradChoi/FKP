@@ -258,6 +258,16 @@ grant select on public.partner_category_public to anon, authenticated;
 | `exposed_to_fkp` 큐레이션과의 관계 | **무관.** 마이그레이션 주석이 명시하듯 이는 FKP 요청폼 드롭다운의 애플리케이션 필터이지 기밀성 축이 아니다. SEEPN 공개 목록은 큐레이션 여부와 상관없이 **파트너가 실제로 고른 카테고리**를 보여주는 것이 맞다 |
 | anon에게 열어도 되는가 | **된다.** B-9′(카테고리 필터)가 비로그인 목록의 핵심 기능이고, 이 뷰가 없으면 그 기능이 성립하지 않는다 |
 
+> **[2026-09-12 개정 — `role` 컬럼 추가]** `20260912110000_partner_category_primary_sub.sql` §5가 이 뷰에 **`psc.role`(`'primary'`/`'sub'`/`null`) 3번째 컬럼**을 추가했다(screen-spec §11 OQ-2 대표 확정, 바이어 "주력분야만 보기" 토글용). 위 표의 판정 중 바뀌는 것과 유지되는 것:
+>
+> | 항목 | 개정 후 판정 |
+> |---|---|
+> | 노출 컬럼 | ~~2개만~~ → **3개**(`partner_id`, `standard_category_id`, `role`). `created_at` 제외는 그대로 |
+> | 개인정보 해당성 | **없음 — 유지.** `role`은 파트너가 **이미 공개 동의로 노출 중인 카테고리 선택의 부가 속성**(그중 무엇이 주력인지)이지 새로운 정보 항목이 아니다. 개인 식별성은 `partner_id`가 이미 갖는 수준을 넘지 않는다. **별도 동의 불요** — 다만 아래 두 개의 부수 조건이 붙는다 |
+> | 3계층 게이트 승계 | **유지.** `create or replace view`가 `from`/`join` 절을 **한 글자도 바꾸지 않았다**(`join private.partner_public_base b on b.id = psc.partner_id`, SELECT 목록에만 컬럼 추가). 회귀 테스트 k12b가 게이트 미충족 파트너의 role-태깅 행이 새지 않음을 확인 |
+> | **[부수조건 1] 고지 목록 불일치** | 파트너 공개 동의 고지(`docs/legal/partner-privacy-v1.0-2026-09-ko.md` §7 "공개되는 정보", `lib/supplier/publicListingDisclosure.ts`)에는 **"표준 카테고리"가 애초에 anon 공개 항목으로 적혀 있지 않다**(상수는 buyer-only 버킷에 두고 있으나 이 뷰는 `anon`에 grant된다). `role` 추가로 이 불일치가 한 겹 더 쌓였다. BP-20이 확립한 원칙("공개면에 컬럼을 더하면 §7 + 상수 + 기존 동의자 고지를 같은 PR에서 동기화")에 따라 **후속 동기화 필요 — 위험도 주요, 배포 차단 아님**(법인은 개인정보 아님, 개인사업자는 준용) |
+> | **[부수조건 2] 백필된 `primary`는 파트너의 의사표시가 아니다** | 마이그레이션 §2는 `created_at` 오름차순 1번째를 `primary`로 **추론**한다(screen-spec OQ-3 대표 확정). 즉 기존 파트너의 "주력 분야"로 공개되는 값은 **파트너가 선언한 적 없는 시스템 추정값**이며, 바이어 토글(`app/seepn/partners/page.tsx`의 `primaryOnly`)이 이 값을 그대로 필터에 쓴다. 개인정보 이슈는 아니나 **정확성(법 제3조제3항 취지) 및 사업상 오표시** 문제이므로, 파트너가 한 번도 확인하지 않은 계정에 대해서는 토글 노출 시점 또는 안내 발송을 product-manager가 판단할 것 |
+
 ### 3.3 B-13(0건 카테고리) 카운트 노출 — 개인정보 이슈 없음
 
 ```sql
@@ -905,6 +915,7 @@ PRD §4.3.1이 **"P5a 착수는 TR-4″-2 재검토를 자동으로 트리거한
 
 | Version | Date | Changes | Author |
 |---|---|---|---|
+| 1.4 | 2026-09-12 | **§3.2 개정 — `partner_category_public`에 `role` 컬럼 추가 반영**(`20260912110000_partner_category_primary_sub.sql` §5, screen-spec §11 OQ-2 대표 확정). 노출 컬럼 2개 → 3개로 사실 정정. **개인정보 해당성 "없음" 판정과 3계층 게이트 승계는 유지**(뷰의 `from`/`join`이 바이트 단위로 불변임을 SQL 원문 대조 + 회귀 테스트 k12b로 확인 — PSO-3 해소). 부수조건 2건 기재: ① 파트너 공개 동의 고지(`partner-privacy` §7 / `PUBLIC_LISTING_EXPOSED_FIELDS`)에 표준 카테고리 자체가 anon 공개 항목으로 적혀 있지 않은 기존 불일치가 확대됨(BP-20 원칙에 따른 후속 동기화 필요, 주요) ② 백필된 `role='primary'`는 `created_at` 추론값이라 파트너의 의사표시가 아님에도 바이어 "주력분야만 보기" 필터의 근거가 됨(정확성 이슈, PM 판단) | privacy-security-officer |
 | 1.3 | 2026-09-11 | **P5b(비교 BY-13/14 + 운영자 큐레이션 BY-16/BY-A2) 사전검토 반영 — §3.4 신설, §0.3에 BP-28~30 추가.** screen-spec §10 **PSO-C2 해소**: `public.partner_featured_public`이 `public.partner_list_public`을 INNER JOIN해 3계층 게이트를 상속하며 게이트를 재구현·우회하는 경로가 0건임을 SQL 원문·회귀 테스트(§i i1~i13)로 확인. PSO-C4(비교 화면)는 신규 노출면 아님으로 확인 — `CompareTable`이 렌더하는 필드는 BY-09 상세의 진부분집합. M-R12(`display_order` 미노출) 4개 경로 전부 준수 확인 + 인적 결정이므로 법 제37조의2 비적용임을 기록. PSO-C1(다중 참조 문의)은 `/seepn/compare/inquiry` 실제 코드로 §5.3(h) 결론 유지 재확인. 탈퇴 파트너의 pick 행 잔존은 개인정보 아님으로 판정(대표자명은 `private.partner_contact`에만 존재하며 탈퇴 시 즉시 삭제). **배포 차단 0건** | privacy-security-officer |
 | 1.2 | 2026-09-10 | **D-14④(휴면 12개월/30일 파기) 대체 결정 병기 — §12 결정 ④ 아래에 "휴면 재결정" 블록 추가(원 결정은 보존).** 유예기간 30일→6개월, 자동 탈퇴 시 `buyer_account.status`만 `withdrawn`으로 바꾸고 `buyer_bookmark`·`seepn_inquiry`는 손대지 않는 방식으로 변경. BP-18의 원칙("처리방침 숫자 = 배치 동작")에 따라 바이어 법무 문서 2건을 제자리 수정했고(`legal-review-queue.md` 1.4), **법적 판단(안내 미발송 상태의 일방 해지 + 해지 후 무기한 보존과 법 제21조)은 P-19·T-9에 미해소로 남아 배치 가동 전 회신이 필요하다** | privacy-security-officer |
 | 1.1 | 2026-09-10 | **ceo-advisor 결정 4건 인라인 반영(PRD D-14).** §12 에스컬레이션 3건에 각각 "→ ceo-advisor 승인" 블록 병기(원 질의·권고는 보존) + 결정 ④(바이어 12개월/30일 파기, 구 BP-18) 추가. D-14① 이행으로 `data-breach-response-procedure-v1.0.md` / `internal-management-plan-v1.0.md` 신규 작성(둘 다 기존 미존재 확인). 그 과정에서 **BP-22(통지 대상자 추출 함수 부재) / BP-23(권한 변경 이력 2년 purge — 법정 3년 미달) / BP-24(파기 배치 pg_cron 등록 미확인)** 3건 신규 발견, §0.3·§12에 기재. D-14③으로 BP-9의 이행 범위가 ko 1개 로케일로 축소(BP-10은 유효) | privacy-security-officer |

@@ -21,6 +21,12 @@ export interface PartnerFilterValues {
   vertical?: string // all|product|service
   serviceTypes?: string // comma-separated
   sort?: string // recent|name
+  // Design Ref: partner-standard-category-picker-redesign.screen-spec.md §8/§11 OQ-2(2026-09-12
+  // 대표 확정) — "주력분야만 보기" 토글. 카테고리 필터가 선택된 상태에서만 의미가 있다(선택된
+  // 카테고리 중 partner_category_public.role='primary'인 파트너만 매칭). 카테고리 필터가
+  // 없으면 이 값은 조용히 무시된다(app/seepn/partners/page.tsx 참고) — D-8이 지키던 "전체(주+
+  // 서브) 노출" 기본 동작은 이 토글을 켜지 않는 한 그대로다.
+  primaryOnly?: string // '1'이면 켜짐
 }
 
 function CategoryTreeNode({
@@ -123,6 +129,7 @@ export function PartnerFilters({
   const [vertical, setVertical] = useState(initial.vertical ?? 'all')
   const [serviceTypes, setServiceTypes] = useState<string[]>(initial.serviceTypes ? initial.serviceTypes.split(',') : [])
   const [sort, setSort] = useState(initial.sort ?? 'recent')
+  const [primaryOnly, setPrimaryOnly] = useState(initial.primaryOnly === '1')
 
   function toggleInList(list: string[], setList: (v: string[]) => void, value: string) {
     setList(list.includes(value) ? list.filter((v) => v !== value) : [...list, value])
@@ -143,6 +150,7 @@ export function PartnerFilters({
     if (vertical !== 'all') params.set('vertical', vertical)
     if (vertical === 'service' && serviceTypes.length > 0) params.set('serviceTypes', serviceTypes.join(','))
     if (sort !== 'recent') params.set('sort', sort)
+    if (categoryIds.length > 0 && primaryOnly) params.set('primaryOnly', '1')
     const qs = params.toString()
     router.push(qs ? `${basePath}?${qs}` : basePath)
   }
@@ -156,6 +164,7 @@ export function PartnerFilters({
     setVertical('all')
     setServiceTypes([])
     setSort('recent')
+    setPrimaryOnly(false)
     router.push(basePath)
   }
 
@@ -236,6 +245,20 @@ export function PartnerFilters({
           </div>
         </div>
       )}
+
+      {/* Design Ref: partner-standard-category-picker-redesign.screen-spec.md §11 OQ-2
+          (2026-09-12 대표 확정) — "주력분야만 보기". 카테고리를 하나도 선택하지 않았으면 이
+          토글은 비활성화한다(적용될 카테고리 기준이 없으므로 의미가 없다). */}
+      <label className={`flex items-center gap-1.5 text-body-sm ${categoryIds.length === 0 ? 'text-neutral-400' : 'text-neutral-700'}`}>
+        <input
+          type="checkbox"
+          checked={primaryOnly}
+          disabled={categoryIds.length === 0}
+          onChange={(e) => setPrimaryOnly(e.target.checked)}
+        />
+        주력분야만 보기
+        {categoryIds.length === 0 && <span className="text-label-caption text-neutral-400">(카테고리를 먼저 선택하세요)</span>}
+      </label>
 
       <div className="flex gap-3">
         <button type="submit" className={primaryButtonClass}>
