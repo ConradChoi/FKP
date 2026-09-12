@@ -3,7 +3,10 @@
 // 테이블을 공유해야 한다". Single source of truth for both SubmissionChecklist (§2.2 sidebar
 // card) and ProfileTabs's per-tab "미입력" dot indicator (§6.1). Keys match
 // lib/admin/partnerSubmissionGaps.ts's computeSubmissionGaps() SubmissionGapItem.key exactly.
-export type SupplierTabId = 'basic' | 'capability' | 'documents' | 'contact' | 'settings'
+// seepn-partner-web-p6-dashboard.screen-spec.md §1.1 (SUP-15) — 'dashboard' added to the union.
+// Deliberately NOT added to GAP_KEY_TO_TAB below: the dashboard tab has no input fields, so it's
+// not a valid destination for the "미입력 항목 -> 탭" mapping this table exists for.
+export type SupplierTabId = 'dashboard' | 'basic' | 'capability' | 'documents' | 'contact' | 'settings'
 
 export const GAP_KEY_TO_TAB: Record<string, SupplierTabId> = {
   business_entity_type: 'basic',

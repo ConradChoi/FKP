@@ -91,3 +91,14 @@ export function EnvelopeIcon({ className }: IconProps) {
     </svg>
   )
 }
+
+// Design Ref: seepn-partner-web-p6-dashboard.screen-spec.md §1.1 — SUP-15 관심수 카드 아이콘.
+// EnvelopeIcon과 동일한 컨벤션(24 viewBox, stroke=currentColor)으로 새로 그림 — 기존 아이콘 중
+// 하트 아이콘이 없어 신규 추가.
+export function HeartIcon({ className }: IconProps) {
+  return (
+    <svg {...commonProps} className={className}>
+      <path d="M12 20.5s-7.5-4.6-9.9-9.3A5 5 0 0 1 12 6a5 5 0 0 1 9.9 5.2C19.5 15.9 12 20.5 12 20.5z" />
+    </svg>
+  )
+}

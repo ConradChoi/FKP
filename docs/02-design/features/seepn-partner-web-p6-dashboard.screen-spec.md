@@ -263,6 +263,18 @@ CLAUDE.md 원칙("개인정보를 다루는 기능은 privacy-security-officer �
 | PSO-D2 | `seepn_inquiry_partner`에 파트너용 SELECT RLS 정책이 실수로 추가되지 않는지(현재는 buyer 자기조회 정책만 존재, §4.2 인용) | 만약 누군가 "파트너도 이 테이블을 직접 읽게 하자"고 편의상 정책을 추가하면 RPC 우회 경로로 문의 본문·상대 파트너 목록이 새어나갈 수 있음 |
 | PSO-D3 | 대시보드 탭이 미검증 파트너에게도 노출되는 것(OQ-D1)이 확정될 경우, 0건 카드에 붙는 안내 문구가 "검증 전 상태"를 필요 이상으로 상세히 드러내지 않는지(예: 반려 사유 재노출 등 — 이미 상태배너에 있는 정보를 중복 노출하는 수준으로 제한) | 신규 노출면은 아니지만 문구 확정 시 재확인 권고 |
 
+### 8.1 [2026-09-12] privacy-security-officer 판정 — **배포 가능(치명적/주요 0건)**
+
+| # | 판정 | 근거 |
+|---|---|---|
+| PSO-D1 | **통과** | `20260912100000_get_own_partner_inquiry_count.sql`이 `get_own_partner_bookmark_count()`(`20260910100000` §10)와 속성 동일 — 인자 없음, `returns integer`, `language sql`, `stable`, `security definer`, `set search_path = ''`, 단일 집계 statement, `revoke all from public` + `grant execute to authenticated`. 시계열/상태별 breakdown/드릴다운 파라미터 없음 |
+| PSO-D2 | **통과** | `public.seepn_inquiry_partner`의 정책은 `seepn_inquiry_partner_self_select`(buyer 자기조회) **1개뿐**이며, 이번 변경분에서 신규 정책·grant 추가 없음. `/supplier` 코드의 `seepn_inquiry*` 직접 조회 참조 0건(유일한 파트너측 경로가 신규 RPC) |
+| PSO-D3 | **통과** | `cardNotice()`가 미검증 상태에 반환하는 문구는 `'검증이 완료되면 집계가 시작됩니다.'` 단 하나. 반려 사유(`rejectionReason`)는 `SupplierProfileShell`의 상태배너에만 존재하고 대시보드는 참조하지 않음 |
+
+권고 2건(배포 차단 아님): ① 회귀 테스트 §j에 "파트너 세션의 `seepn_inquiry_partner` 직접 SELECT = 0행" 가드 1건 추가(PSO-D2를 코드로 고정), ② 두 RPC 모두 `private.is_active_partner()` 게이트가 없어 정지/탈퇴 파트너의 유효 JWT로 PostgREST 직접 호출 시 본인 집계값이 반환됨(자기 데이터 한정, 기존 bookmark RPC 승계 이슈 — 고칠 경우 두 함수를 함께 고칠 것).
+
+기록: `docs/03-security/seepn-buyer-web-p5a-privacy-review.md` §6.3에 확인 결과 1건 추가(신규 privacy review 문서는 만들지 않음 — 기존 패턴 승계).
+
 ---
 
 ## Version History

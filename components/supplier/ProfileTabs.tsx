@@ -9,7 +9,11 @@ import { useRef } from 'react'
 import type { SupplierTabId } from '@/lib/supplier/tabGaps'
 import { useDirtyGuard } from './DirtyGuard'
 
+// seepn-partner-web-p6-dashboard.screen-spec.md §1.1/§3.2 (D-D1, SUP-15) — dashboard tab added
+// at the front of the list and promoted to the default landing tab (D-D2, see
+// app/supplier/profile/page.tsx). Label is a ux-writer-pending draft (OQ-D4).
 const TABS: { id: SupplierTabId; label: string; href: string }[] = [
+  { id: 'dashboard', label: '대시보드', href: '/supplier/profile/dashboard' },
   { id: 'basic', label: '기본정보', href: '/supplier/profile/basic' },
   { id: 'capability', label: '역량정보', href: '/supplier/profile/capability' },
   { id: 'documents', label: '문서', href: '/supplier/profile/documents' },

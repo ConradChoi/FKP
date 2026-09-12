@@ -45,6 +45,13 @@
 --      even though its partner_featured_pick.active row is untouched — i.e.
 --      the curation feature cannot be used to route around the same gate
 --      every other buyer-facing surface enforces.
+--   j. (added 2026-09-12, 20260912100000, SUP-15/P6 dashboard) B-19
+--      get_own_partner_inquiry_count() — self-only aggregate count (own
+--      partner row's seepn_inquiry_partner rows only, another partner's
+--      inquiries never counted), total-cumulative/status-agnostic count
+--      (OQ-D2), zero-inquiry default, and non-partner callers (buyer/admin/
+--      anon) all falling through to 0 or an EXECUTE-grant denial exactly
+--      like get_own_partner_bookmark_count().
 --
 -- See this directory's README.md for when this file must be updated.
 -- =============================================================================
@@ -807,6 +814,147 @@ begin
     raise exception 'FAIL: i13: anon must be able to see case6 via public.partner_featured_public';
   end if;
   raise notice 'PASS: i13: anon sees the currently-featured, gate-satisfying partner via public.partner_featured_public';
+  reset role;
+end;
+$$;
+
+
+-- =============================================================================
+-- §j. get_own_partner_inquiry_count() (added 2026-09-12, 20260912100000,
+--     SUP-15/P6 dashboard) — self-only aggregate count, cross-partner
+--     isolation, zero-count default, non-partner callers fall through to 0
+-- =============================================================================
+
+-- Two more partner-login accounts + owned partner rows, dedicated to this
+-- section (not reusing c01/case5 so this section stays independent of
+-- earlier sections' state).
+insert into auth.users (id, email, email_confirmed_at) values
+  ('33333333-3333-3333-3333-333333333c02', 'regtest-partner-2@example.test', now()),
+  ('33333333-3333-3333-3333-333333333c03', 'regtest-partner-3@example.test', now());
+
+insert into public.auth_principal (auth_user_id, principal_kind) values
+  ('33333333-3333-3333-3333-333333333c02', 'partner'),
+  ('33333333-3333-3333-3333-333333333c03', 'partner');
+
+insert into public.partner_account (id, auth_user_id, status, display_name) values
+  ('33333333-3333-3333-3333-333333333c02', '33333333-3333-3333-3333-333333333c02', 'active', 'Regtest Partner Two (inquiry-owner)'),
+  ('33333333-3333-3333-3333-333333333c03', '33333333-3333-3333-3333-333333333c03', 'active', 'Regtest Partner Three (zero-inquiry)');
+
+insert into public.partner (id, owner_account_id, intake_source, verification_state, public_listing_state, company_name_ko, vertical)
+values
+  ('44444444-4444-4444-4444-444444444411', '33333333-3333-3333-3333-333333333c02', 'self_service', 'verified', 'on', 'Regtest Case11 InquiryOwner Co',       'product'),
+  ('44444444-4444-4444-4444-444444444412', '33333333-3333-3333-3333-333333333c03', 'self_service', 'verified', 'on', 'Regtest Case12 ZeroInquiry Co',        'product'),
+  ('44444444-4444-4444-4444-444444444413', null,                                   'self_service', 'verified', 'on', 'Regtest Case13 OtherUnownedPartner Co','product');
+
+-- Buyer A creates 2 inquiries referencing case11 (owned by c02, one 'new'
+-- and one 'closed' — deliberately mixed status to confirm OQ-D2's
+-- "total cumulative, no status filter") and 1 inquiry referencing case13
+-- (a different, unowned partner) that must never be counted toward c02.
+insert into public.seepn_inquiry (id, buyer_account_id, body, status) values
+  ('55555555-5555-5555-5555-555555555f02', '11111111-1111-1111-1111-111111111a01', 'Regression-test j1 inquiry body, long enough to satisfy the length check.', 'new'),
+  ('55555555-5555-5555-5555-555555555f03', '11111111-1111-1111-1111-111111111a01', 'Regression-test j2 inquiry body, long enough to satisfy the length check.', 'closed'),
+  ('55555555-5555-5555-5555-555555555f04', '11111111-1111-1111-1111-111111111a01', 'Regression-test j3 inquiry body referencing a different, unowned partner.', 'new');
+
+insert into public.seepn_inquiry_partner (inquiry_id, partner_id) values
+  ('55555555-5555-5555-5555-555555555f02', '44444444-4444-4444-4444-444444444411'),
+  ('55555555-5555-5555-5555-555555555f03', '44444444-4444-4444-4444-444444444411'),
+  ('55555555-5555-5555-5555-555555555f04', '44444444-4444-4444-4444-444444444413');
+
+do $$
+declare
+  v_count integer;
+begin
+  -- j1: partner Two (c02, owns case11) sees exactly 2 — both statuses
+  -- ('new' and 'closed') counted, confirming OQ-D2 ("total cumulative, no
+  -- status filter"), and the case13 inquiry (a different, unowned partner)
+  -- is NOT counted.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c02', false);
+  set role authenticated;
+
+  select public.get_own_partner_inquiry_count() into v_count;
+  if v_count <> 2 then
+    raise exception 'FAIL: j1: partner Two must see exactly 2 (own inquiries only, status-agnostic), got %', v_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: j1: partner Two sees exactly 2 (own inquiries only, both new+closed counted, other partner excluded)';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_count integer;
+begin
+  -- j2: partner Three (c03, owns case12, zero inquiries referencing it)
+  -- sees exactly 0 — confirms the zero-inquiry default, not an exception.
+  perform set_config('request.jwt.claim.sub', '33333333-3333-3333-3333-333333333c03', false);
+  set role authenticated;
+
+  select public.get_own_partner_inquiry_count() into v_count;
+  if v_count <> 0 then
+    raise exception 'FAIL: j2: partner Three (zero referencing inquiries) must see exactly 0, got %', v_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: j2: partner Three (zero referencing inquiries) sees exactly 0';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_count integer;
+begin
+  -- j3: a buyer session (not a partner at all) must NOT error and must NOT
+  -- see anyone's inquiry count — private.current_partner_id() resolves to
+  -- null for a buyer, so the aggregate falls through to 0, exactly like
+  -- get_own_partner_bookmark_count()'s documented behaviour for a
+  -- non-partner caller.
+  perform set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111a01', false);
+  set role authenticated;
+
+  select public.get_own_partner_inquiry_count() into v_count;
+  if v_count <> 0 then
+    raise exception 'FAIL: j3: a buyer session calling get_own_partner_inquiry_count() must see 0 (not another partner''s count, not an error), got %', v_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: j3: a buyer session calling get_own_partner_inquiry_count() sees 0 (non-partner caller, same as bookmark_count)';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+declare
+  v_count integer;
+begin
+  -- j4: an admin session (also not a partner) must equally fall through to 0.
+  perform set_config('request.jwt.claim.sub', '22222222-2222-2222-2222-222222222b01', false);
+  set role authenticated;
+
+  select public.get_own_partner_inquiry_count() into v_count;
+  if v_count <> 0 then
+    raise exception 'FAIL: j4: an admin session calling get_own_partner_inquiry_count() must see 0, got %', v_count using errcode = 'ZZ001';
+  end if;
+  raise notice 'PASS: j4: an admin session calling get_own_partner_inquiry_count() sees 0 (non-partner caller, same as bookmark_count)';
+
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', false);
+end;
+$$;
+
+do $$
+begin
+  -- j5: anon must not even be able to call it (no EXECUTE grant), matching
+  -- get_own_partner_bookmark_count()'s grant posture (authenticated only).
+  set role anon;
+  begin
+    perform public.get_own_partner_inquiry_count();
+    raise exception 'FAIL: j5: anon must NOT be able to call get_own_partner_inquiry_count() (no EXECUTE grant)' using errcode = 'ZZ001';
+  exception when insufficient_privilege then
+    raise notice 'PASS: j5: anon calling get_own_partner_inquiry_count() raises insufficient_privilege (no EXECUTE grant)';
+  end;
   reset role;
 end;
 $$;
