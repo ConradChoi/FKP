@@ -281,5 +281,6 @@ CLAUDE.md 원칙("개인정보를 다루는 기능은 privacy-security-officer �
 
 | Version | Date | Changes | Author |
 |---|---|---|---|
+| 1.2 | 2026-09-12 | **SUP-15 구현·검토·프로덕션 반영 완료.** 신규 RPC `get_own_partner_inquiry_count()` + 대시보드 탭(`app/supplier/profile/dashboard`) + 기본 랜딩 전환까지 전부 구현하고 qa-reviewer·privacy-security-officer(PSO-D1~D3) 검토를 거쳐 배포했다(git `03dcdb8`, 대표가 Dashboard SQL Editor에서 함수 생성 확인 — `prosecdef=true`, `proacl`이 `get_own_partner_bookmark_count()`와 완전히 동일한 패턴임을 대조 확인). 회귀 테스트 §j(5건) 전부 통과. 비차단 후속 과제 2건만 남음: PSO-D2를 회귀 테스트로 고정, 정지/탈퇴 파트너의 PostgREST 직접 호출 방지용 `is_active_partner()` 게이트 추가(둘 다 기존 `get_own_partner_bookmark_count()`에서 승계된 특성이라 이번 배포를 막지 않음) | frontend-developer / backend-developer / qa-reviewer / privacy-security-officer, Claude(정리) |
 | 1.1 | 2026-09-12 | **OQ-D1~D3 대표 확정 — 전부 서비스기획자 권고안 그대로 채택.** 미검증 파트너에게도 대시보드 노출(OQ-D1), 문의수신 건수는 전체 누적(OQ-D2), 기본 랜딩 `/basic`→`/dashboard` 변경 승인(OQ-D3). OQ-D4(탭 라벨)만 ux-writer 대상으로 남김. 구현 착수 가능 | 대표 확정, Claude(정리) |
 | 1.0 | 2026-09-11 | 최초 작성 — PRD rev7(P6 재정의), §3.2.1 SS-14 재검토, §7.2 SP-15 기준. 관심수(기존 `get_own_partner_bookmark_count()`)와 문의수신 건수(신규 RPC 계약 설계, §4)를 숫자 카드 2개로 노출하는 SUP-15 신설. 로그인 후 기본 랜딩을 `/basic`→`/dashboard`로 전환(D-D2)하는 것으로 "재로그인 유인"을 UI만으로 구현. `partner-supplier-app.screen-spec.md` D-S3(전용 대시보드 미설계 결정)를 이 범위 내에서 무효화. 엣지케이스 8건, Open Question 4건, privacy-security-officer 핸드오프 3건 | service-planner |
