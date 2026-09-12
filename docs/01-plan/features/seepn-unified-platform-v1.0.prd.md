@@ -850,16 +850,19 @@ D-5의 "공지/FAQ는 이식이 아니라 매핑해서 흡수" 지시에 대한 
 ### 4.4 각 Phase 완료 조건 (DoD)
 
 **P1 — Partner/Capability + Admin 공급사 관리**
-- [ ] privacy-security-officer **사전** 검토 통과 (PR-1~PR-6, 특히 PC-6/PR-4)
-- [ ] backend-developer가 API 계약(요청/응답/에러)을 frontend-developer와 공유·합의
-- [ ] 파트너 신규 등록 → 목록 → 상세 → 수정 전 구간 동작
-- [ ] `intake_source`, `verification_state`, `sourced_by` 기록 확인 (PC-1/2/5)
-- [ ] 동일 사업자번호 중복 경고 동작 (PC-4)
-- [ ] 담당자 연락처가 목록에서 마스킹되고, 원문 열람이 `audit_log`에 남음 (PR-1)
-- [ ] anon 키로 파트너 테이블 접근 차단 확인 (RLS deny-by-default)
-- [ ] 새 메뉴가 `/admin/permissions/menus`에서 관리되며 코드에 하드코딩되지 않음 (v0.2 INV-2)
-- [ ] 권한 없는 역할로 URL 직접 접근 시 차단됨을 테스트로 증명
-- [ ] privacy-security-officer 배포 전 최종 점검 + qa-reviewer 리뷰 통과
+
+> **[2026-09-12 회귀검증]** 아래 체크박스는 qa-reviewer가 코드·문서를 직접 대조해 재검증한 결과다(P5a/P6과 동일한 방식 — 문서가 실제 배포 상태를 못 따라간 경우가 반복 확인되어, "미체크 = 미완료"로 단정하지 않고 매번 재검증한다). 근거 문서: `docs/03-security/partner-signup-privacy-review.md`(스키마 착수 전 검토), `partner-supplier-app-ui-privacy-review.md`(화면 레벨 검토), `partner-supplier-app-ceo-decisions.md`, `partner-supplier-app-backend-implementation-notes.md`.
+
+- [x] privacy-security-officer **사전** 검토 통과 (PR-1~PR-6, 특히 PC-6/PR-4) — 08-29 스키마 착수 전 검토("스키마 설계 착수 가능" 판정) + 09-03 화면 레벨 검토(blocking 11건, UI-B1~B11)의 핵심 항목(UI-B3 동의철회/UI-B5 파기워커/UI-B6 개인사업자 익명화/UI-B10 BRN 축소)이 `20260904100000_supplier_app_privacy_fixes.sql`·`20260904110000_fix_partner_grant_consent_fk_bug.sql`로 실제 반영됨을 코드로 확인. **단서**: UI-B10(사업자번호 중복확인 조회범위 축소)에 대한 privacy-security-officer의 공식 회신 기록이 문서에 없음 — backend가 자체 판단으로 이미 반영은 했으나(`check_business_registration_duplicate` service_role 전용화), 공식 회신 자체는 후속 확인 필요
+- [x] backend-developer가 API 계약(요청/응답/에러)을 frontend-developer와 공유·합의 — `partner-supplier-app-backend-implementation-notes.md`가 RPC/REST 계약을 명시. 단 이 문서와 구현이 같은 날(09-04) 나와 "구현 전 합의"인지 "구현 후 문서화"인지는 커밋 이력만으로 확증 불가(P5a와 동일한 한계)
+- [x] 파트너 신규 등록 → 목록 → 상세 → 수정 전 구간 동작 — `app/supplier/{signup,profile/*}`, `app/admin/(protected)/partners/{page.tsx,new/page.tsx,[id]/page.tsx}` 전부 존재하고 라우트가 이어짐을 확인
+- [x] `intake_source`, `verification_state`, `sourced_by` 기록 확인 (PC-1/2/5) — `intake_source`(self_service/admin_entry)·`verification_state`(5-state enum) 확인(`20260829140000` L61-63). **문서 오류 정정**: PRD가 말하는 "sourced_by"는 실제로는 컬럼명이 `referred_by uuid references admin_user`(PC-5, L70)로 구현되어 있다 — 기능은 동등, PRD 용어만 실제 스키마와 다름
+- [x] 동일 사업자번호 중복 경고 동작 (PC-4) — self-service: `check_business_registration_duplicate()`(service_role 전용, 열거공격 방지). admin: `checkDuplicateCandidatesAction`이 전체 후보 직접 조회. 둘 다 확인
+- [x] 담당자 연락처가 목록에서 마스킹되고, 원문 열람이 `audit_log`에 남음 (PR-1) — `partner_public` 뷰에 contact 계열 컬럼 자체가 구조적으로 없음, 원문은 `get_partner_contact()` 경유(3단계 deny 체크 + 감사기록 실패 시 원문 반환 롤백) 확인
+- [x] anon 키로 파트너 테이블 접근 차단 확인 (RLS deny-by-default) — `public.partner`: enable/force RLS + `revoke all from anon, authenticated`, anon은 `partner_public` 뷰(select만) 외 접근경로 없음 확인
+- [x] 새 메뉴가 `/admin/permissions/menus`에서 관리되며 코드에 하드코딩되지 않음 (v0.2 INV-2) — `app/admin/(protected)/permissions/menus/*` 존재, `my_menu_tree()` RPC로 DB 기반 렌더 확인
+- [ ] 권한 없는 역할로 URL 직접 접근 시 차단됨을 **테스트로** 증명 — 코드 방어(서버 리다이렉트 + RLS 이중 방어)는 존재하나, 이 저장소의 자동화 테스트는 FKP 랜딩페이지 2건뿐이고 admin/partner 관련 테스트가 0건이라 "테스트로 증명" 요건은 미충족(P5a DoD 때와 동일한 한계 — SEEPN 바이어 플로우는 이후 `supabase/tests/`로 회귀 하네스가 생겼지만, 이 admin/partner 권한 체크는 아직 커버 안 됨). **미체크 유지, 별도 백로그**
+- [x] privacy-security-officer 배포 전 최종 점검 + qa-reviewer 리뷰 통과 — 이 기간 qa-reviewer가 개입해 실버그 최소 2건 수정(탈퇴 파트너 `partner_public` 노출 방어, `partner_grant_consent` FK 버그) 확인. **참고**: "P1 DoD 10개 항목을 한 번에 코드 대조"하는 단일 회귀검증 문서는 이번 감사(2026-09-12) 이전에는 없었음 — 지금 이 갱신이 그 첫 문서화
 
 **P2 — 표준 카테고리**
 - [x] OQ-3 검증 완료(374노드의 Vertical A/B 커버리지 실측, 2026-08-29) — C안 확정
@@ -973,10 +976,10 @@ CLAUDE.md 운영 원칙에 따라 **본 PRD 승인 → service-planner → ui-ux
 |:---:|------|------|:---:|
 | 1 | 본 PRD 방향 승인 + **OQ-1 / OQ-2 / OQ-3 / OQ-4 결정** (차단성 4건) | **대표** / ceo-advisor | ✅ 완료 (2026-08-29) |
 | 2 | OQ-3 선결 조사 — `seepn_standard_categories_2.0.xlsx` 파싱 및 Vertical A/B 커버리지 리포트 | 실사(코디네이터 세션에서 직접 수행) | ✅ 완료 (2026-08-29, §3.5.3) |
-| 3 | Partner PII / 대행입력 공개(PC-6, PR-1~6) **사전** 검토 | **privacy-security-officer** | ⬜ 대기 — D-6으로 대행입력이 예외경로화되며 범위는 축소됐으나 여전히 필수 |
-| 4 | 본 PRD 기준 화면 흐름 상세화 | **service-planner** | ⬜ 대기 — 착수 가능 |
+| 3 | Partner PII / 대행입력 공개(PC-6, PR-1~6) **사전** 검토 | **privacy-security-officer** | ~~⬜ 대기~~ → **✅ 완료 (2026-09-12 회귀검증으로 확인, 실제로는 2026-08-29/09-03에 이미 완료됨)** — `partner-signup-privacy-review.md`(스키마 착수 전) → `partner-supplier-app-ui-privacy-review.md`(화면 레벨) → ceo-advisor 결정 → 09-04 코드 반영까지 전 사이클 확인. §4.4 P1 DoD 참조 |
+| 4 | 본 PRD 기준 화면 흐름 상세화 | **service-planner** | ~~⬜ 대기~~ → **✅ 완료** — `partner-supplier-app.screen-spec.md`(SUP-01~14) 기존 존재 확인 |
 | 5 | **(신규, D-12)** **OQ-12 / OQ-13 / OQ-14 결정** — "200곳"의 정의, P5a 공개 오픈 임계치, 비교 이후 액션 경로 | **대표** | ✅ **완료 (2026-09-09, D-13)** — 3건 모두 확정. **차단성 Open Question 잔여 0건** |
-| 6 | **(신규, D-12)** SEEPN **공개 노출면**(비로그인 목록 + 로그인 상세 + 바이어 계정) 사전검토 — 노출 필드 화이트리스트, 사업자번호 검색 제외(B-9c′), 3번째 principal_kind의 RLS 회귀 | **privacy-security-officer** | ⬜ 대기 — **P5a 차단 조건** (§4.4 P5a DoD) |
+| 6 | **(신규, D-12)** SEEPN **공개 노출면**(비로그인 목록 + 로그인 상세 + 바이어 계정) 사전검토 — 노출 필드 화이트리스트, 사업자번호 검색 제외(B-9c′), 3번째 principal_kind의 RLS 회귀 | **privacy-security-officer** | ~~⬜ 대기~~ → **✅ 완료 (2026-09-10, `seepn-buyer-web-p5a-privacy-review.md`)** — 어제 P5a DoD 재검증 때 이미 확인됨, 여기 상태만 뒤늦게 정정 |
 
 ### 7.2 service-planner 핸드오프 포인트
 
@@ -1042,6 +1045,7 @@ CLAUDE.md 운영 원칙에 따라 **본 PRD 승인 → service-planner → ui-ux
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 1.0 (rev8) | 2026-09-12 | **P1 DoD 및 §7.1 승인 게이트 회귀검증 (qa-reviewer, 사용자 질의 "파트너까지는 끝났나요?"에 대응).** P5a/P6과 동일한 문서-지연 패턴 재확인 — P1(파트너/Capability + Admin 공급사 관리)은 실제로는 08-29~09-04 사이에 완료됐으나 §4.4/§7.1이 갱신되지 않고 남아있었다. 10개 DoD 항목 중 9개를 코드·기존 privacy review 문서(`partner-signup-privacy-review.md`, `partner-supplier-app-ui-privacy-review.md` 등) 대조로 확인 완료 처리. **진짜 미완 1건은 그대로 미체크 유지**: 권한 없는 URL 접근 차단의 자동화 테스트 부재(코드 방어는 있으나 회귀 안전망 없음 — SEEPN 바이어 쪽과 달리 이 admin/partner 권한 체크는 `supabase/tests/` 하네스에 아직 없음, 별도 백로그). §7.1의 "Partner PII 사전검토"·"화면 흐름 상세화" 두 행도 완료로 정정. 코드는 수정하지 않음(문서 정합성 작업) | qa-reviewer, Claude(정리) |
 | 1.0 (rev7) | 2026-09-11 | **P6 재정의 — §4.1 815행 트리거 처리 (project-manager).** §4.1 P6 행(783행)이 2026-09-10에 스스로 남긴 경고("풀버전이 P1 대비 정확히 무엇을 더하는지 재확정할 것")를 처리했다. P6이 원래 "Partner 자가등록 계정 시스템(풀버전)"이었으나, 자가등록 자체는 §3.2.1의 2026-08-28 대표 결정으로 **이미 P1에서 완료·배포**됐다는 것이 확인되어 이름과 실제 남은 작업이 어긋나 있었다. §4.3 815행이 명시한 P6 재검토 트리거("P5a 관심등록 → SS-14 관심수 데이터 발생")가 **P5a·P5b 배포로 충족**됐음을 확인하고, §3.2.1 SS-14("파트너 대시보드(조회수/관심수/매칭 알림)")를 항목별로 코드 대조했다: **관심수**는 `get_own_partner_bookmark_count()`(`20260910100000` §10)가 이미 구현돼 즉시 사용 가능, **문의수신 건수**(`seepn_inquiry`/`seepn_inquiry_partner`)는 테이블은 있으나 파트너 자기조회 RPC가 없어 소형 신규 RPC 1건 필요, **조회수**(페이지뷰 트래킹 전무)와 **매칭알림**(P4 Human Matching은 admin 전용, 파트너 노출 경로 없음)은 여전히 데이터 없음. **결론**: SS-14를 관심수+문의수신 건수로 좁혀 Could로 승격하고, **P6을 "Partner 자가등록 계정 시스템(풀버전)"에서 "파트너 대시보드/Opportunity Feed(관심수·문의수신 건수 + 재로그인 유인)"로 명칭·범위 전면 교체, 규모 XL→S~M 재산정**. §5 Out of Scope의 "Partner 풀 자가등록 계정 시스템 | P6" 행도 같은 이유로 무효 표시(이미 완료된 작업을 가리키는 잘못된 참조였음, §4.1 P3 폐기 메모 당시 함께 정리됐어야 했던 누락 건). §7.2에 **SP-15 신설**(파트너 대시보드 화면 스펙) — 재정의된 범위가 착수 가능한 수준으로 명확해졌으므로 **다음 단계는 service-planner의 화면 스펙 착수**임을 명시. 코드는 수정하지 않음(로드맵 문서 정합성 작업) | project-manager |
 | 1.0 (rev6) | 2026-09-11 | **OQ-C3 처리 — P5b 규모 재산정 (project-manager).** service-planner의 P5b screen-spec에서 발견된 GAP-C1(문의 다중참조 스키마가 PRD 서술과 달리 실제로는 미구현이었음, 2026-09-10 별도 작업으로 해소·배포 완료·git `13ed1c9`)을 반영해 §3.1.6의 P5b 구성요소별 규모를 재검토. **결론: P5b 합계는 M 유지**, 단 내부 구성 재배분 — 비교(B-12b) M→S~M(하향, GAP-C4로 필드·비교정책 리스크 해소 확인), 큐레이션(B-12e) S→S~M(상향, GAP-C3로 "이미 있는 플래그"가 아니라 신규 소형 테이블 + privacy-security-officer 재검토 필요 확인). §3.1.6 표·§4.1 P5b 행에 취소선+재산정치+근거 반영. **방법론 메모 추가**: 파일/라인을 인용한 재사용 주장은 이번 검증에서 전부 사실과 일치했고, 인용 없는 서술형 "이미 있다" 주장은 확인된 2건 모두 틀렸다(GAP-C1, GAP-C3) — 향후 Phase(특히 P7) 착수 전 인용 없는 재사용 주장은 코드 대조를 기본값으로 할 것을 권고. `docs/02-design/features/seepn-buyer-web-p5b.screen-spec.md` §10 OQ-C3도 동일 결론으로 갱신 | project-manager |
 | 1.0 | 2026-08-28 | 초안 작성 — SEEPN×FKP 통합 플랫폼 기능정의. 대표 확정 D-1~D-10 전제, 문제 P-1~P-8 정의, Buyer/Partner/Admin/Matching 4영역 기능정의, Admin 중복 매핑표(A-01~A-18), 카테고리 3안 비교 및 C안 권고, P1~P8 로드맵 및 MVP 최소기능(P1+P2+P4), Out of Scope 21건, Open Question 10건(차단 4건), service-planner 핸드오프 9건 | product-manager |
