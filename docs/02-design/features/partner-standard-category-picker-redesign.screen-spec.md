@@ -346,10 +346,40 @@ CLAUDE.md 원칙("개인정보를 다루는 기능은 privacy-security-officer �
 
 ---
 
+## 13. 추가 개선 — vertical 인지 필터링 + L0 숨김 (2026-09-13, 대표 요청)
+
+배포 후 대표가 실제 화면을 확인하고 준 피드백. 참고 파일 `data/seepn_standard_categories_2.0.xlsx`("📋 표준 카테고리" 시트)를 직접 파싱해 확인한 사실을 근거로 한다.
+
+### 13.1 확인된 사실 (엑셀 직접 파싱)
+
+- 표준 카테고리 트리의 **L0(최상위)은 정확히 3개 노드**: **"상품"**(L1 4개: 비품/소모품·사무/교육/가구·소방/안전/의료·전기/기계/설비), **"서비스"**(L1 10개), **"상품+서비스"**(L1 6개: 복지 서비스·생산 관리·시설 공사·연구개발·정보통신·차량 관리). 3+10+6=20으로 기존 문서의 "L1: 20개"와 일치.
+- **"상품+서비스"는 `partner.vertical`에 필요한 제3의 값이 아니다** — `partner.vertical`은 `'product'`/`'service'` 둘로 충분하다(`20260829140000_partner_schema.sql:119`, 변경 없음). 대신 "상품+서비스" L0은 **vertical과 무관하게 두 버티컬 파트너 모두에게 노출되어야 하는 카테고리 branch**다(예: `vertical='product'`인 파트너도 "정보통신"·"생산 관리" 같은 카테고리를 골라야 할 수 있다).
+- 이 L0 3분류가 실제 DB `standard_category`에 진짜 부모-자식 관계(parent_id 체인)로 들어가 있는지는 **대표가 실제 모달 화면에서 "상품"이 최상위 검색결과로 뜨는 것을 확인**했으므로(스크린샷), 실제로 3개 root row로 존재하는 것으로 판단한다 — 이 마이그레이션 이력에 임포트 스크립트가 없어(수동 임포트로 추정) 정확한 검증은 Admin이 SQL Editor로 재확인 가능하나, 화면 증거로 충분히 진행 가능한 확신 수준.
+
+### 13.2 결정 사항
+
+| # | 결정 |
+|---|---|
+| **D-9** | 카테고리 모달(`CategoryPickerModal.tsx`, **파트너 자가입력·Admin 대행입력 두 곳 모두** — 목록 필터/바이어 공개 필터는 이번 범위 밖, §13.3 참고)은 **"파트너 자신의 vertical(product→"상품" root / service→"서비스" root) 하위 트리" ∪ "상품+서비스" root 하위 트리**만 검색·선택 대상으로 노출한다. 반대쪽 vertical 단독 root는 완전히 제외 |
+| **D-10** | 검색 결과의 `path` 표시에서 **L0(루트) 세그먼트는 숨긴다** — 예: "상품 > 비품/소모품 > 사무용품"이 아니라 "비품/소모품 > 사무용품"으로 표시. L0 노드 자체는 검색 결과 목록에도 나타나지 않는다(선택 불가능한 항목이 노출되는 것을 막음). L1부터 정상 노출 |
+
+### 13.3 범위 — 이번에 바꾸지 않는 것
+
+**바이어 공개 목록 필터**(`components/seepn/PartnerFilters.tsx`)와 **Admin 파트너 목록 필터**(`app/admin/(protected)/partners/CategoryPicker.tsx` + `PartnerFilters.tsx`)는 **특정 파트너 1명의 vertical에 묶이지 않고 전체 파트너를 넘나들며 탐색하는 용도**이므로 이번 vertical 필터링·L0 숨김 대상이 아니다. 이 두 화면은 계속 전체 트리(L0 포함)를 그대로 보여준다. 대상은 **CapabilityForm.tsx(파트너 자가입력)와 CapabilityTab.tsx(Admin 대행입력) 안의 모달 호출뿐**이다.
+
+### 13.4 구현 방향 (참고용, backend/frontend-developer 재량)
+
+- `app/admin/(protected)/partners/categoryOptions.ts`의 `CategoryOption`에 각 노드의 **L0 root id/name**과 **depth(레벨)**를 추가로 계산해 반환하도록 확장(순수 TS 로직, DB 스키마 변경 불필요 — `parent_id` 체인은 이미 있음).
+- `CapabilityForm.tsx`/`CapabilityTab.tsx`가 이 확장된 옵션 목록을 **자신이 렌더링 중인 `partner.vertical`값**으로 필터링해서 `CategoryPickerModal`에 넘긴다(모달 컴포넌트 자체는 vertical을 모르게 유지 — 이미 필터링된 옵션만 받는 편이 컴포넌트 재사용성에 낫다).
+- `path` 표시용 문자열은 L0 세그먼트를 제외하고 조립(예: depth 0은 join에서 제외).
+
+---
+
 ## Version History
 
 | Version | Date | Changes | Author |
 |---|---|---|---|
+| 1.4 | 2026-09-13 | **§13 신설 — vertical 인지 필터링 + L0 숨김 (대표 피드백, 배포 후 실화면 확인 기반).** `data/seepn_standard_categories_2.0.xlsx`를 직접 파싱해 L0이 "상품"/"서비스"/"상품+서비스" 3분류(3+10+6=20 L1, 기존 문서 수치와 일치)임을 확인 — "상품+서비스"는 `partner.vertical`의 제3값이 아니라 두 vertical 모두에게 노출되어야 하는 별도 branch. D-9(파트너 vertical ∪ 상품+서비스만 노출)·D-10(L0 세그먼트는 화면에서 숨김, L1부터 표시) 결정. 적용 범위는 CapabilityForm.tsx(파트너)·CapabilityTab.tsx(Admin) 두 곳뿐 — 바이어/Admin 목록 필터는 전체 파트너를 넘나드는 탐색용이라 이번 범위 제외 | 대표 피드백, Claude(정리) |
 | 1.3 | 2026-09-13 | **프로덕션 반영 완료.** 대표가 Dashboard SQL Editor에서 직접 실행, 3가지 확인 완료: ① 파트너당 주 카테고리 중복 0건(백필 정합성), ② 신규 RPC 2종(`partner_set_standard_categories`, `admin_set_partner_standard_categories`) 존재 확인, ③ `partner_standard_category`에 대한 `authenticated` 권한이 `select`만 남고 `insert`/`delete`는 제거됨(쓰기 경로가 RPC로만 좁혀졌음을 확인). git `87e28ad` | 대표 확인, Claude(정리) |
 | 1.2 | 2026-09-12 | **구현·검토·배포 전 수정 완료.** 백엔드(role 컬럼+제약+RPC 2종)·프론트(공용 모달, 파트너/Admin 화면, 공개 필터 토글) 구현 후 qa-reviewer·privacy-security-officer 검토를 거쳤다. **배포 전 수정 3건**: ① qa-reviewer 지적 — self-service RLS가 새 "주1+서브2" 규칙을 강제하지 못해 RPC 우회 시 무제한 삽입 가능 → `partner_standard_category`의 `authenticated` INSERT/DELETE grant와 self/admin insert/delete 정책을 전부 제거, 쓰기를 RPC 전용으로 전환(`partner_featured_pick`/`seepn_inquiry_partner`와 동일 패턴), 회귀 테스트 k15a~c 추가. ② privacy-security-officer 지적(P-A, 실사용 버그) — 레거시 오버플로우(role=null) 카테고리를 재선택하면 PK 충돌로 저장이 영구 실패 → 두 RPC의 delete 조건에 재선택 대상 id도 포함하도록 수정, 회귀 테스트 k16 추가. ③ 같은 검토(P-E, 실사용 버그) — `app/supplier/profile/layout.tsx`가 존재하지 않는 `id` 컬럼을 select해서 "주 카테고리 미입력" 경고가 항상 거짓으로 표시되던 것을 `partner_id` select로 수정. **배포 후 후속 필요(비차단)**: P-B(레거시 카테고리를 파트너 본인이 볼 수도 해제할 수도 없음), P-C(처리방침 §7에 표준 카테고리 자체가 누락 — 이번 기능과 무관한 기존 결함, product-manager 확인 필요), P-H(백필된 primary가 파트너의 실제 의사가 아닌 추정값인데 바로 바이어 필터에 쓰임 — product-manager 판단). privacy-security-officer가 `seepn-buyer-web-p5a-privacy-review.md`(v1.4)를 직접 갱신해 신규 노출 컬럼(`role`)을 반영했다 | backend-developer / frontend-developer / qa-reviewer / privacy-security-officer, Claude(정리+P-A/P-E 수정+회귀테스트 추가) |
 | 1.1 | 2026-09-12 | **OQ-1~OQ-4 대표 확정 — 범위 확대.** Admin `CapabilityTab.tsx`도 모달로 함께 전환(OQ-1, D-7 "Admin은 드롭다운 유지" 원 설계를 뒤집음 — prop 기반 공용 컴포넌트 리팩터링 권장), 공개 목록 필터에 role 토글 추가(OQ-2, D-8 "미변경" 원 설계를 뒤집음), 백필 기준(created_at 오름차순)·레거시 초과분 처리(영구 보존)는 권고안 그대로 채택(OQ-3/OQ-4). 구현 착수 가능 | 대표 확정, Claude(정리) |
