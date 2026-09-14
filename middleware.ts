@@ -25,6 +25,13 @@ const ADMIN_PUBLIC_PATHS = new Set(['/admin/login', '/admin/mfa-setup', '/admin/
 // domain itself.
 const SEEPN_STANDALONE_HOSTS = new Set(['seepn.me', 'www.seepn.me'])
 
+// Design Ref: 2026-09-14 follow-up request — "supplier.seepn.me 입력 시 https://
+// findkoreanpartners.com/supplier로 보낼 것". A real cross-domain redirect (not a same-app
+// rewrite like SEEPN_STANDALONE_HOSTS above): this is a memorable alias domain only, the actual
+// /supplier app continues to live solely on findkoreanpartners.com.
+const SUPPLIER_SEEPN_REDIRECT_HOSTS = new Set(['supplier.seepn.me'])
+const SUPPLIER_SEEPN_REDIRECT_TARGET = 'https://findkoreanpartners.com/supplier'
+
 // Design Ref: partner-supplier-app.screen-spec.md §1.4 — session cookie namespace kept
 // separate from /admin (see lib/supabase/supplierBrowserClient.ts's SUPPLIER_AUTH_COOKIE_NAME).
 // Only the "signed in at all" check happens here (matching guardAdmin's session-only scope);
@@ -227,6 +234,9 @@ export async function middleware(request: NextRequest) {
     // `Host` header directly is what actually varies per incoming request, both locally and
     // behind AWS Amplify's edge, so that's the one this check needs.
     const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
+    if (SUPPLIER_SEEPN_REDIRECT_HOSTS.has(host)) {
+      return NextResponse.redirect(SUPPLIER_SEEPN_REDIRECT_TARGET)
+    }
     if (SEEPN_STANDALONE_HOSTS.has(host)) {
       return NextResponse.rewrite(new URL('/seepn/home', request.url))
     }
