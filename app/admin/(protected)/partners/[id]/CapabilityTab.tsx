@@ -12,7 +12,7 @@
 // CategoryPicker(../CategoryPicker.tsx, 목록 필터 전용으로 남음)를 쓰지 않는다 — 그 파일은
 // PartnerFilters.tsx 전용으로 계속 남긴다(§7 근거 그대로 유지, 필터 모드까지 role/3개 제한을
 // 적용하면 안 되므로).
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/styles'
 import { OEM_ODM_LABELS, PRICING_MODEL_LABELS, REMOTE_ONSITE_LABELS, SERVICE_TYPE_OPTIONS } from '@/lib/admin/partnerLabels'
 import { updatePartnerCapabilityAction, setPartnerStandardCategoriesAction, type PartnerCapabilityPatch } from './actions'
@@ -23,7 +23,7 @@ import {
   type CategoryPickerClassNames,
   type CategoryRoleSelection,
 } from '@/components/supplier/CategoryPickerModal'
-import type { CategoryOption } from '../categoryOptions'
+import { filterCategoryOptionsForVertical, type CategoryOption } from '../categoryOptions'
 import type { PartnerDetail } from './page'
 
 // Admin UI 토큰으로 분기 — CategoryPickerModal.tsx 헤더 코멘트가 설명하는 "제3의 소비자가
@@ -54,6 +54,13 @@ export function CapabilityTab({
   canUpdate: boolean
 }) {
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+
+  // D-9/D-10(§13): 파트너 자신의 vertical 하위 트리 ∪ "상품+서비스" 하위 트리만 노출, L0은 숨김.
+  // vertical이 아직 없으면 빈 배열 — 아래에서 카테고리 선택 UI를 비활성화하고 안내로 대체한다.
+  const filteredCategoryOptions = useMemo(
+    () => filterCategoryOptionsForVertical(categoryOptions, partner.vertical),
+    [categoryOptions, partner.vertical],
+  )
 
   async function commitCategorySelection(next: CategoryRoleSelection): Promise<boolean> {
     const result = await setPartnerStandardCategoriesAction(partner.id, next.primaryId, next.subIds)
@@ -151,22 +158,30 @@ export function CapabilityTab({
       <section className="rounded-card border border-neutral-200 bg-neutral-0 p-5">
         <h2 className="admin-heading-3 text-neutral-900">표준 카테고리</h2>
         <p className="mt-1 admin-label-sm text-neutral-400">선택은 즉시 저장됩니다.</p>
-        <div className="mt-2 max-w-lg">
-          <CategoryRoleSummary
-            options={categoryOptions}
-            selection={categorySelection.selection}
-            onRemovePrimary={categorySelection.removePrimary}
-            onRemoveSub={categorySelection.removeSub}
-            classNames={ADMIN_CATEGORY_CLASS_NAMES}
-          />
-        </div>
-        <button type="button" onClick={() => setCategoryModalOpen(true)} className="mt-3 admin-body-sm text-primary-600 hover:underline">
-          카테고리 선택
-        </button>
-        {categorySelection.saving && <p className="mt-1 admin-label-sm text-neutral-400">저장 중...</p>}
-        {categorySelection.error && <p className="mt-1 admin-body-sm text-error">{categorySelection.error}</p>}
-        {!categorySelection.selection.primaryId && (
-          <p className="mt-2 admin-body-sm text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
+        {partner.vertical ? (
+          <>
+            <div className="mt-2 max-w-lg">
+              <CategoryRoleSummary
+                options={filteredCategoryOptions}
+                selection={categorySelection.selection}
+                onRemovePrimary={categorySelection.removePrimary}
+                onRemoveSub={categorySelection.removeSub}
+                classNames={ADMIN_CATEGORY_CLASS_NAMES}
+              />
+            </div>
+            <button type="button" onClick={() => setCategoryModalOpen(true)} className="mt-3 admin-body-sm text-primary-600 hover:underline">
+              카테고리 선택
+            </button>
+            {categorySelection.saving && <p className="mt-1 admin-label-sm text-neutral-400">저장 중...</p>}
+            {categorySelection.error && <p className="mt-1 admin-body-sm text-error">{categorySelection.error}</p>}
+            {!categorySelection.selection.primaryId && (
+              <p className="mt-2 admin-body-sm text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
+            )}
+          </>
+        ) : (
+          <p className="mt-2 admin-body-sm text-neutral-400">
+            버티컬(제품/서비스)이 아직 선택되지 않았습니다 — 기본정보 탭에서 먼저 선택하세요.
+          </p>
         )}
         {legacyCategoryOverflowCount > 0 && (
           <p className="mt-2 admin-label-sm text-neutral-400">
@@ -178,7 +193,7 @@ export function CapabilityTab({
       <CategoryPickerModal
         open={categoryModalOpen}
         onClose={() => setCategoryModalOpen(false)}
-        options={categoryOptions}
+        options={filteredCategoryOptions}
         selection={categorySelection.selection}
         saving={categorySelection.saving}
         error={categorySelection.error}

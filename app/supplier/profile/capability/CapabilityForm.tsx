@@ -6,11 +6,11 @@
 // 필드는 기존과 동일하게 독립 저장 버튼. ui-spec §3.8 (버티컬 미선택 시 안내카드로 대체, 흐림
 // 처리 아님) + §9 UI-R7(레퍼런스 프로젝트 자유서술 필드 캡션).
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getSupplierBrowserClient } from '@/lib/supabase/supplierBrowserClient'
 import { inputClass, primaryButtonClass, secondaryButtonClass, errorTextClass } from '@/components/RequestForm/styles'
 import { OEM_ODM_LABELS, PRICING_MODEL_LABELS, REMOTE_ONSITE_LABELS, SERVICE_TYPE_OPTIONS } from '@/lib/admin/partnerLabels'
-import type { CategoryOption } from '@/app/admin/(protected)/partners/categoryOptions'
+import { filterCategoryOptionsForVertical, type CategoryOption } from '@/app/admin/(protected)/partners/categoryOptions'
 import type { PartnerProfile, ReferenceProject } from '@/lib/supplier/types'
 import { CategoryPickerModal, CategoryRoleSummary, useCategoryRoleSelection, type CategoryRoleSelection } from '@/components/supplier/CategoryPickerModal'
 import { useDirtyGuard } from '@/components/supplier/DirtyGuard'
@@ -62,6 +62,14 @@ export function CapabilityForm({
 }) {
   const { setDirty } = useDirtyGuard()
   const [categoryModalOpen, setCategoryModalOpen] = useState(false)
+
+  // D-9/D-10(§13): 파트너 자신의 vertical 하위 트리 ∪ "상품+서비스" 하위 트리만 노출, L0은 숨김.
+  // vertical이 아직 없으면(!partner.vertical) 필터링 기준이 없으므로 빈 배열 — 아래에서 카테고리
+  // 선택 UI 자체를 비활성화하고 안내로 대체한다.
+  const filteredCategoryOptions = useMemo(
+    () => filterCategoryOptionsForVertical(categoryOptions, partner.vertical),
+    [categoryOptions, partner.vertical],
+  )
 
   async function commitCategorySelection(next: CategoryRoleSelection): Promise<boolean> {
     const supabase = getSupplierBrowserClient()
@@ -142,28 +150,39 @@ export function CapabilityForm({
       <section className="rounded-card border border-neutral-200 bg-neutral-0 p-5">
         <h2 className="text-body font-medium text-neutral-900">표준 카테고리</h2>
         <p className="mt-1 text-label-caption text-neutral-400">선택은 즉시 저장됩니다.</p>
-        <div className="mt-2 max-w-lg">
-          <CategoryRoleSummary
-            options={categoryOptions}
-            selection={categorySelection.selection}
-            onRemovePrimary={categorySelection.removePrimary}
-            onRemoveSub={categorySelection.removeSub}
-          />
-        </div>
-        <button type="button" onClick={() => setCategoryModalOpen(true)} className={`${secondaryButtonClass} mt-3`}>
-          카테고리 선택
-        </button>
-        {categorySelection.saving && <p className="mt-1 text-label-caption text-neutral-400">저장 중...</p>}
-        {categorySelection.error && <p className={`mt-1 ${errorTextClass}`}>{categorySelection.error}</p>}
-        {!categorySelection.selection.primaryId && (
-          <p className="mt-2 text-label-caption text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
+        {partner.vertical ? (
+          <>
+            <div className="mt-2 max-w-lg">
+              <CategoryRoleSummary
+                options={filteredCategoryOptions}
+                selection={categorySelection.selection}
+                onRemovePrimary={categorySelection.removePrimary}
+                onRemoveSub={categorySelection.removeSub}
+              />
+            </div>
+            <button type="button" onClick={() => setCategoryModalOpen(true)} className={`${secondaryButtonClass} mt-3`}>
+              카테고리 선택
+            </button>
+            {categorySelection.saving && <p className="mt-1 text-label-caption text-neutral-400">저장 중...</p>}
+            {categorySelection.error && <p className={`mt-1 ${errorTextClass}`}>{categorySelection.error}</p>}
+            {!categorySelection.selection.primaryId && (
+              <p className="mt-2 text-label-caption text-accent-700">주 카테고리를 선택해주세요 — 프로필 제출을 위해 필수입니다.</p>
+            )}
+          </>
+        ) : (
+          <p className="mt-2 text-label-caption text-neutral-400">
+            먼저 기본정보에서 상품/서비스를 선택해주세요.{' '}
+            <Link href="/supplier/profile/basic" className="text-primary-600 hover:underline">
+              기본정보 탭으로 이동
+            </Link>
+          </p>
         )}
       </section>
 
       <CategoryPickerModal
         open={categoryModalOpen}
         onClose={() => setCategoryModalOpen(false)}
-        options={categoryOptions}
+        options={filteredCategoryOptions}
         selection={categorySelection.selection}
         saving={categorySelection.saving}
         error={categorySelection.error}
