@@ -12,6 +12,19 @@ import type { NextRequest } from 'next/server'
 
 const ADMIN_PUBLIC_PATHS = new Set(['/admin/login', '/admin/mfa-setup', '/admin/mfa-challenge'])
 
+// Design Ref: 2026-09-14 CEO request — "seepn.me로 접속했을 때 메인 화면이 노출되어야 한다"
+// (Figma "User App" U-01 home). This app serves multiple hostnames from one Amplify deployment
+// (no host-based routing existed before this), so `findkoreanpartners.com`'s own `/` -> `/en`
+// redirect below would otherwise also fire for seepn.me. Deliberately narrow: only the bare root
+// path is affected, and only via `rewrite` (not `redirect`) so the address bar stays on
+// `seepn.me/` rather than exposing the internal `/seepn/home` route. Every other path
+// (seepn.me/seepn/partners, etc.) is unaffected — this app has no other host-based path
+// remapping, so those already resolve normally regardless of which domain points at it.
+// findkoreanpartners.com's own bare `/seepn` is intentionally left untouched (still redirects to
+// /seepn/partners, per existing behavior) — this hostname check only ever matches the seepn.me
+// domain itself.
+const SEEPN_STANDALONE_HOSTS = new Set(['seepn.me', 'www.seepn.me'])
+
 // Design Ref: partner-supplier-app.screen-spec.md §1.4 — session cookie namespace kept
 // separate from /admin (see lib/supabase/supplierBrowserClient.ts's SUPPLIER_AUTH_COOKIE_NAME).
 // Only the "signed in at all" check happens here (matching guardAdmin's session-only scope);
@@ -209,6 +222,14 @@ async function guardAdmin(request: NextRequest): Promise<NextResponse> {
 
 export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname === '/') {
+    // `request.nextUrl.hostname` did not reflect a spoofed `Host` header in local testing
+    // against a plain `next start` (it kept resolving to the actual bind address) — reading the
+    // `Host` header directly is what actually varies per incoming request, both locally and
+    // behind AWS Amplify's edge, so that's the one this check needs.
+    const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
+    if (SEEPN_STANDALONE_HOSTS.has(host)) {
+      return NextResponse.rewrite(new URL('/seepn/home', request.url))
+    }
     return NextResponse.redirect(new URL('/en', request.url))
   }
 
