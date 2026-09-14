@@ -1,0 +1,29 @@
+-- =============================================================================
+-- Fix: public.partner_document SELECT was failing for every `authenticated`
+-- caller (partner AND admin) with "42501: permission denied for function
+-- has_pii_access" — root-caused via a partner's live upload-then-view report
+-- (2026-09-14).
+--
+-- private.has_pii_access() (20260825120000) was deliberately left ungranted
+-- to `authenticated` on the assumption it would only ever be called from
+-- OTHER security-definer functions (public.get_request_contact /
+-- get_my_admin_context), whose own elevated context covers the call. That
+-- assumption broke when 20260829140000's partner_document_admin_select RLS
+-- policy started calling it DIRECTLY inside a USING clause. RLS predicates
+-- run in the QUERYING role's own privilege context — SECURITY DEFINER only
+-- changes what happens *inside* the function body once entered, it does not
+-- waive the caller's own EXECUTE requirement to enter it at all. Postgres
+-- evaluates every applicable permissive policy's qual to compute the
+-- combined SELECT filter (even for rows/callers where the end boolean would
+-- be false), so a plain partner querying their own row still trips the
+-- admin policy's qual and hits the missing grant before self_select's
+-- (correct, passing) condition ever matters.
+--
+-- Safe to grant: has_pii_access() returns a boolean derived solely from the
+-- CALLING auth.uid()'s own admin/role state (same "describes only the
+-- caller" safety argument already used for current_partner_id/owns_partner).
+-- A non-admin partner calling it themselves just gets `false` back — no PII
+-- or other user's data is exposed by this grant.
+-- =============================================================================
+
+grant execute on function private.has_pii_access(uuid) to authenticated;

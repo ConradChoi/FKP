@@ -39,9 +39,12 @@ function DocumentRow({
     setError(null)
     const supabase = getSupplierBrowserClient()
     // screen-spec §4.4 — self-access, no audit RPC needed (G-S4), TTL 300s, forced download.
+    // download: doc.original_filename (not bare `true`) — storage_path's filename segment is a
+    // randomUUID (route.ts's server-generated path), so a bare boolean would save the download
+    // as that UUID instead of the name the partner actually uploaded.
     const { data, error: signError } = await supabase.storage
       .from('partner-doc')
-      .createSignedUrl(doc.storage_path, 300, { download: true })
+      .createSignedUrl(doc.storage_path, 300, { download: doc.original_filename })
     setViewing(false)
     if (signError || !data?.signedUrl) {
       setError('열람에 실패했습니다.')
