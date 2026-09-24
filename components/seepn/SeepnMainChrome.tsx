@@ -2,6 +2,7 @@
 // the same dark-navy header. Extracted from app/seepn/home/page.tsx so the home and the
 // 전체 카테고리 page render one header instead of two drifting copies.
 import Link from 'next/link'
+import { HeaderAccount } from '@/components/seepn/HeaderAccount'
 
 export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
   return (
@@ -36,11 +37,7 @@ export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
           >
             공급사 등록
           </Link>
-          {account ?? (
-            <Link href="/seepn/login" className="rounded-full bg-primary-600 px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-700">
-              로그인
-            </Link>
-          )}
+          {account ?? <HeaderAccount />}
           <Link href="/seepn/my" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
             마이페이지
           </Link>

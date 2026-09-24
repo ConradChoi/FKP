@@ -150,7 +150,7 @@ async function guardBuyer(request: NextRequest): Promise<NextResponse> {
   }
 
   if (pathname === '/seepn/login' || pathname === '/seepn/signup') {
-    return NextResponse.redirect(new URL('/seepn/partners', request.url))
+    return NextResponse.redirect(new URL('/seepn/home', request.url))
   }
 
   return response

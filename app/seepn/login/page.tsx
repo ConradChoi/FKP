@@ -92,7 +92,7 @@ function LoginContent() {
 
     setLoading(false)
     const redirectTo = searchParams.get('redirect')
-    router.push(redirectTo && redirectTo.startsWith('/seepn') ? redirectTo : '/seepn/partners')
+    router.push(redirectTo && redirectTo.startsWith('/seepn') ? redirectTo : '/seepn/home')
     router.refresh()
   }
 
