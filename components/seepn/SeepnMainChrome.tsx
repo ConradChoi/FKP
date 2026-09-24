@@ -41,7 +41,7 @@ export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
               로그인
             </Link>
           )}
-          <Link href="/seepn/my/bookmarks" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
+          <Link href="/seepn/my" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
             마이페이지
           </Link>
         </div>
