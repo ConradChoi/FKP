@@ -27,7 +27,7 @@ export function AccountMenu({ displayName, triggerClassName }: { displayName: st
       {open && (
         <div className="absolute right-0 z-10 mt-2 w-40 rounded-card border border-neutral-200 bg-neutral-0 p-2 shadow-lg">
           <Link
-            href="/seepn/my/settings"
+            href="/seepn/my/profile"
             onClick={() => setOpen(false)}
             className="block w-full rounded-input px-2 py-1.5 text-left text-body-sm text-neutral-700 hover:bg-neutral-50"
           >
