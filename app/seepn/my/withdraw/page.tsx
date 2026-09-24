@@ -1,10 +1,14 @@
-import { MyComingSoon } from '@/components/seepn/MyComingSoon'
+// Design Ref: Figma U-11 마이페이지 side menu "회원 탈퇴" — reason selection/input, consent, then
+// withdrawal (2026-09-24 request). Session gate comes from app/seepn/my/layout.tsx.
+import { WithdrawForm } from '@/components/seepn/WithdrawForm'
 
 export default function SeepnMyWithdrawPage() {
   return (
-    <MyComingSoon
-      title="회원 탈퇴"
-      description="회원 탈퇴 전용 화면이 곧 제공됩니다. 지금은 상단 계정 메뉴의 '탈퇴'에서 진행할 수 있습니다."
-    />
+    <div>
+      <h1 className="text-h3 text-neutral-900">회원 탈퇴</h1>
+      <div className="mt-6 max-w-2xl">
+        <WithdrawForm />
+      </div>
+    </div>
   )
 }
