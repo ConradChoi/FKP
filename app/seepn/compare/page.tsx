@@ -11,6 +11,7 @@ import type { PartnerDetailBuyerRow } from '@/lib/seepn/types'
 import { CompareTable } from '@/components/seepn/CompareTable'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
+import { SaveComparisonButton } from '@/components/seepn/SaveComparisonButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,8 +105,13 @@ export default async function SeepnComparePage({ searchParams }: { searchParams:
   return (
     <PageShell>
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 pb-28">
-        <h1 className="text-h3 text-neutral-900">파트너 비교</h1>
-        <p className="mt-1 text-body-sm text-neutral-500">{finalPartners.length}곳을 비교하고 있습니다.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-h3 text-neutral-900">파트너 비교</h1>
+            <p className="mt-1 text-body-sm text-neutral-500">{finalPartners.length}곳을 비교하고 있습니다.</p>
+          </div>
+          {finalPartners.length >= 2 && <SaveComparisonButton partnerIds={finalIds} />}
+        </div>
 
         {banners.length > 0 && (
           <div className="mt-4 space-y-2">
