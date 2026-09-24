@@ -2,11 +2,10 @@
 // the same dark-navy header. Extracted from app/seepn/home/page.tsx so the home and the
 // 전체 카테고리 page render one header instead of two drifting copies.
 import Link from 'next/link'
-import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 
 export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
   return (
-    <header className="bg-[#0f1732]">
+    <header className="sticky top-0 z-40 bg-[#0f1732]">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-8">
           <Link href="/seepn/home" className="text-body-lg font-semibold text-white">
@@ -48,14 +47,5 @@ export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
         </div>
       </div>
     </header>
-  )
-}
-
-export function SeepnMainFooter() {
-  return (
-    <div className="border-t border-neutral-200 bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-3 text-label-caption text-neutral-400">© 2026 SEEPN Inc. All rights reserved.</div>
-      <SeepnFooter />
-    </div>
   )
 }

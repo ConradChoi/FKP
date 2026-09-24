@@ -11,7 +11,8 @@ import { getSupabaseServerClient } from '@/lib/supabase/serverClient'
 import { fetchPublicCategoryTree, type CategoryNode } from '@/lib/seepn/categoryTree'
 import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
-import { SeepnMainHeader, SeepnMainFooter } from '@/components/seepn/SeepnMainChrome'
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
+import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 
 const CATEGORY_CARD_COUNT = 5
 const CATEGORY_CARD_CHILDREN_LIMIT = 4
@@ -58,7 +59,7 @@ export default async function SeepnHomePage() {
       <WhySeepn />
       <Insights />
       <SupplierCta />
-      <SeepnMainFooter />
+      <SeepnFooter />
     </div>
   )
 }

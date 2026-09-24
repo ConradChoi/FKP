@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { getSupabaseServerClient } from '@/lib/supabase/serverClient'
 import { fetchPublicCategoryTree } from '@/lib/seepn/categoryTree'
 import { CategoryL3ModalTrigger } from '@/components/seepn/CategoryL3Modal'
-import { SeepnMainHeader, SeepnMainFooter } from '@/components/seepn/SeepnMainChrome'
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
+import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 
 const L3_PREVIEW_LIMIT = 5
 
@@ -112,7 +113,7 @@ export default async function SeepnCategoriesPage({ searchParams }: { searchPara
           </div>
         )}
       </main>
-      <SeepnMainFooter />
+      <SeepnFooter />
     </div>
   )
 }
