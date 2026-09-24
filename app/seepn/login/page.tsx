@@ -16,7 +16,6 @@ import { inputClass, primaryButtonClass, errorTextClass } from '@/components/Req
 const NEUTRAL_LOGIN_ERROR = '이메일 또는 비밀번호가 올바르지 않습니다.'
 const BLOCKED_ACCOUNT_MESSAGE = '이 계정으로는 로그인할 수 없습니다. 도움이 필요하시면 고객센터로 문의해주세요.'
 const SUSPENDED_MESSAGE = '이용이 제한된 계정입니다. 고객센터로 문의해주세요.'
-const GENERIC_ERROR = '로그인에 실패했습니다. 잠시 후 다시 시도해주세요.'
 
 function LoginContent() {
   const router = useRouter()
@@ -58,8 +57,11 @@ function LoginContent() {
       .maybeSingle<{ status: string }>()
 
     if (!account) {
+      // Signed in to Supabase Auth but not a buyer (partner/admin credentials, or no account row):
+      // drop the session so it cannot linger and confuse the next visit.
+      await supabase.auth.signOut()
       setLoading(false)
-      setError(GENERIC_ERROR)
+      setError(BLOCKED_ACCOUNT_MESSAGE)
       return
     }
     if (account.status === 'withdrawn') {

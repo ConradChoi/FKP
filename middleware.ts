@@ -150,7 +150,15 @@ async function guardBuyer(request: NextRequest): Promise<NextResponse> {
   }
 
   if (pathname === '/seepn/login' || pathname === '/seepn/signup') {
-    return NextResponse.redirect(new URL('/seepn/home', request.url))
+    // Only bounce a buyer who can actually use the site. A valid auth session whose buyer_account is
+    // withdrawn/suspended/missing (or a partner/admin session in this namespace) would otherwise be
+    // redirected away from the login screen forever — /seepn/my sends it to /seepn/login, this sends
+    // it straight back to the home — and the visitor could never sign in as someone else.
+    const { data: account } = await supabase.from('buyer_account').select('status').maybeSingle<{ status: string }>()
+    if (account?.status === 'active') {
+      return NextResponse.redirect(new URL('/seepn/home', request.url))
+    }
+    return response
   }
 
   return response
