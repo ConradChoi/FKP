@@ -18,6 +18,7 @@ import {
 } from '@/lib/seepn/partnerLabels'
 import { DetailBookmarkButton } from '@/components/seepn/DetailBookmarkButton'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,21 +56,7 @@ export default async function SeepnPartnerDetailPage({ params }: { params: Promi
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-neutral-0">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/seepn/partners" className="text-label-button text-primary-700">
-            SEEPN
-          </Link>
-          <nav className="flex items-center gap-4 text-body-sm">
-            <Link href="/seepn/my/bookmarks" className="text-neutral-600 hover:underline">
-              관심목록
-            </Link>
-            <Link href="/seepn/my/inquiries" className="text-neutral-600 hover:underline">
-              내 문의
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SeepnMainHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 pb-28">
         <div className="flex items-start justify-between gap-4">

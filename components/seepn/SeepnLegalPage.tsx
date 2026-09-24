@@ -13,6 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { renderLegalMarkdown } from '@/lib/legal/renderMarkdown'
 import { SeepnFooter } from './SeepnFooter'
+import { SeepnMainHeader } from './SeepnMainChrome'
 
 export function SeepnLegalPage({ documentVersion }: { documentVersion: string }) {
   const filePath = path.join(process.cwd(), 'docs', 'legal', `${documentVersion}-ko.md`)
@@ -31,6 +32,7 @@ export function SeepnLegalPage({ documentVersion }: { documentVersion: string })
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
+      <SeepnMainHeader />
       <main className="mx-auto w-full max-w-[760px] flex-1 px-6 py-10">
         <article>{content}</article>
       </main>

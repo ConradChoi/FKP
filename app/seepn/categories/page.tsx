@@ -25,7 +25,7 @@ export default async function SeepnCategoriesPage({ searchParams }: { searchPara
       <SeepnMainHeader />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-6">
         <nav aria-label="breadcrumb" className="text-label-caption text-neutral-500">
-          <Link href="/" className="text-primary-600 hover:underline">
+          <Link href="/seepn/home" className="text-primary-600 hover:underline">
             홈
           </Link>
           <span className="mx-1.5 text-neutral-400">›</span>

@@ -14,6 +14,7 @@ import { PartnerFilters, type PartnerFilterValues } from '@/components/seepn/Par
 import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 
 const PAGE_SIZE = 18
 const NO_MATCH_SENTINEL = ['00000000-0000-0000-0000-000000000000']
@@ -228,21 +229,7 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-neutral-0">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <Link href="/seepn/partners" className="text-label-button text-primary-700">
-            SEEPN
-          </Link>
-          <nav className="flex items-center gap-4 text-body-sm">
-            <Link href="/seepn/my/bookmarks" className="text-neutral-600 hover:underline">
-              관심목록
-            </Link>
-            <Link href="/seepn/login" className="text-neutral-600 hover:underline">
-              로그인
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SeepnMainHeader />
       <main className="flex-1">{children}</main>
       <SeepnFooter />
     </div>

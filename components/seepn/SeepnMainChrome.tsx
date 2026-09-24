@@ -4,12 +4,12 @@
 import Link from 'next/link'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 
-export function SeepnMainHeader() {
+export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
   return (
     <header className="bg-[#0f1732]">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
         <div className="flex items-center gap-8">
-          <Link href="/" className="text-body-lg font-semibold text-white">
+          <Link href="/seepn/home" className="text-body-lg font-semibold text-white">
             SEEPN
           </Link>
           <nav className="hidden items-center gap-6 text-body-sm text-[#b2bfd9] md:flex">
@@ -37,9 +37,11 @@ export function SeepnMainHeader() {
           >
             공급사 등록
           </Link>
-          <Link href="/seepn/login" className="rounded-full bg-primary-600 px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-700">
-            로그인
-          </Link>
+          {account ?? (
+            <Link href="/seepn/login" className="rounded-full bg-primary-600 px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-700">
+              로그인
+            </Link>
+          )}
           <Link href="/seepn/my/bookmarks" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
             마이페이지
           </Link>

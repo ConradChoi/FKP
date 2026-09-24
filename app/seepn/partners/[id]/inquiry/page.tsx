@@ -3,11 +3,11 @@
 // 않음(INQ-3)". D-S5: this page always references exactly one partner (the [id] in the URL) —
 // there is no "no partner referenced" entry point in P5a.
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { redirectToLoginIfNoBuyerSession } from '@/lib/seepn/loginGate'
 import { requireBuyerSession } from '@/lib/seepn/session'
 import { InquiryForm } from './InquiryForm'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,13 +26,7 @@ export default async function SeepnPartnerInquiryPage({ params }: { params: Prom
 
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      <header className="border-b border-neutral-200 bg-neutral-0">
-        <div className="mx-auto flex max-w-2xl items-center px-4 py-4">
-          <Link href="/seepn/partners" className="text-label-button text-primary-700">
-            SEEPN
-          </Link>
-        </div>
-      </header>
+      <SeepnMainHeader />
 
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
         <h1 className="text-h3 text-neutral-900">운영자에게 문의하기</h1>

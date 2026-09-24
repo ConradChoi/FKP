@@ -3,12 +3,12 @@
 // component awaits its Supabase queries. The exact column count isn't known at this layer (no
 // access to `?ids=` here), so a generic 3-column skeleton is used — same tradeoff as
 // PartnerCardSkeleton elsewhere in this codebase (approximate shape, not exact).
+import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
+
 export default function CompareLoading() {
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      <div className="border-b border-neutral-200 bg-neutral-0 px-4 py-4">
-        <div className="mx-auto h-5 w-24 max-w-5xl animate-pulse rounded bg-neutral-200" />
-      </div>
+      <SeepnMainHeader />
       <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">
         <div className="h-7 w-40 animate-pulse rounded bg-neutral-200" />
         <div className="mt-6 overflow-hidden rounded-card border border-neutral-200 bg-neutral-0">

@@ -258,6 +258,13 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  if (request.nextUrl.pathname === '/seepn/home') {
+    // The shared header's logo/breadcrumb link to /seepn/home (valid on both domains); on the
+    // standalone domain show it as the bare root instead of exposing the internal path.
+    const host = (request.headers.get('host') ?? '').split(':')[0].toLowerCase()
+    if (SEEPN_STANDALONE_HOSTS.has(host)) return NextResponse.redirect(new URL('/', request.url))
+  }
+
   if (request.nextUrl.pathname.startsWith('/seepn')) {
     const response = await guardBuyer(request)
     // privacy review §7.4 BP-15 per-path table, now that the actual list/detail/my pages exist:

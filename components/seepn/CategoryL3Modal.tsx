@@ -20,7 +20,12 @@ export function CategoryL3ModalTrigger({ title, items, label }: { title: string;
       if (e.key === 'Escape') setOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
   }, [open])
 
   return (
@@ -48,7 +53,7 @@ export function CategoryL3ModalTrigger({ title, items, label }: { title: string;
                 ✕
               </button>
             </div>
-            <ul className="flex-1 overflow-y-auto">
+            <ul className="flex-1 overflow-y-auto overscroll-contain">
               {items.map((item) => (
                 <li key={item.id} className="border-b border-neutral-200 last:border-b-0">
                   <Link

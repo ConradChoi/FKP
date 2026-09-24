@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import { getBuyerBrowserClient } from '@/lib/supabase/buyerBrowserClient'
 import { destructiveButtonClass, secondaryButtonClass } from '@/components/RequestForm/styles'
 
-export function AccountMenu({ displayName }: { displayName: string }) {
+export function AccountMenu({ displayName, triggerClassName }: { displayName: string; triggerClassName?: string }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [confirmWithdraw, setConfirmWithdraw] = useState(false)
@@ -53,7 +53,7 @@ export function AccountMenu({ displayName }: { displayName: string }) {
 
   return (
     <div className="relative">
-      <button type="button" onClick={() => setOpen((v) => !v)} className="text-neutral-600 hover:underline">
+      <button type="button" onClick={() => setOpen((v) => !v)} className={triggerClassName ?? 'text-neutral-600 hover:underline'}>
         {displayName}
       </button>
       {open && (
