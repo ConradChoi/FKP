@@ -11,7 +11,7 @@ import { getSupabaseServerClient } from '@/lib/supabase/serverClient'
 import { fetchPublicCategoryTree, type CategoryNode } from '@/lib/seepn/categoryTree'
 import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
-import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { SeepnMainHeader, SeepnMainFooter } from '@/components/seepn/SeepnMainChrome'
 
 const CATEGORY_CARD_COUNT = 5
 const CATEGORY_CARD_CHILDREN_LIMIT = 4
@@ -51,63 +51,15 @@ export default async function SeepnHomePage() {
 
   return (
     <div className="min-h-screen bg-[#f9fafb]">
-      <Header />
+      <SeepnMainHeader />
       <Hero />
       <PopularSuppliers partners={featuredPartners} />
       <CategoryQuick tabs={tabCategories} cards={cardCategories} />
       <WhySeepn />
       <Insights />
       <SupplierCta />
-      <div className="border-t border-neutral-200 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-3 text-label-caption text-neutral-400">© 2026 SEEPN Inc. All rights reserved.</div>
-        <SeepnFooter />
-      </div>
+      <SeepnMainFooter />
     </div>
-  )
-}
-
-function Header() {
-  return (
-    <header className="bg-[#0f1732]">
-      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="text-body-lg font-semibold text-white">
-            SEEPN
-          </Link>
-          <nav className="hidden items-center gap-6 text-body-sm text-[#b2bfd9] md:flex">
-            <Link href="/seepn/partners" className="hover:text-white">
-              공급사 찾기
-            </Link>
-            <span className="cursor-default text-[#6b7699]">TOP100</span>
-            <span className="cursor-default text-[#6b7699]">커뮤니티</span>
-            <span className="cursor-default text-[#6b7699]">인사이트</span>
-            <span className="cursor-default text-[#6b7699]">FAQ</span>
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <form action="/seepn/partners" method="get" className="hidden lg:block">
-            <input
-              type="text"
-              name="q"
-              placeholder="공급사, 품목명으로 검색"
-              className="w-[300px] rounded-input bg-[#254182] px-4 py-2 text-body-sm text-white placeholder:text-[#808cb2] focus:outline-none"
-            />
-          </form>
-          <Link
-            href="/supplier/signup"
-            className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-label-caption text-white hover:bg-white/20"
-          >
-            공급사 등록
-          </Link>
-          <Link href="/seepn/login" className="rounded-full bg-primary-600 px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-700">
-            로그인
-          </Link>
-          <Link href="/seepn/my/bookmarks" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
-            마이페이지
-          </Link>
-        </div>
-      </div>
-    </header>
   )
 }
 
@@ -199,7 +151,7 @@ function CategoryQuick({ tabs, cards }: { tabs: CategoryNode[]; cards: CategoryN
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex items-center justify-between">
           <h2 className="text-h3 text-neutral-900">카테고리별 공급사 찾기</h2>
-          <Link href="/seepn/partners" className="text-body-sm text-primary-600 hover:underline">
+          <Link href="/seepn/categories" className="text-body-sm text-primary-600 hover:underline">
             전체 카테고리 보기 →
           </Link>
         </div>
