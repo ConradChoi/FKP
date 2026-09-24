@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import { HeaderAccount } from '@/components/seepn/HeaderAccount'
 
-export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
+export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' }) {
   return (
     <header className="sticky top-0 z-40 bg-[#0f1732]">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
@@ -13,7 +13,10 @@ export function SeepnMainHeader({ account }: { account?: React.ReactNode }) {
             SEEPN
           </Link>
           <nav className="hidden items-center gap-6 text-body-sm text-[#b2bfd9] md:flex">
-            <Link href="/seepn/partners" className="hover:text-white">
+            <Link
+              href="/seepn/partners"
+              className={active === 'partners' ? 'relative font-semibold text-white after:absolute after:inset-x-0 after:-bottom-[25px] after:h-[3px] after:bg-[#60a5fa]' : 'hover:text-white'}
+            >
               공급사 찾기
             </Link>
             <span className="cursor-default text-[#6b7699]">TOP100</span>

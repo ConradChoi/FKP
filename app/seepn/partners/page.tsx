@@ -229,7 +229,7 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-neutral-50">
-      <SeepnMainHeader />
+      <SeepnMainHeader active="partners" />
       <main className="flex-1">{children}</main>
       <SeepnFooter />
     </div>
