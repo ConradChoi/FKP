@@ -48,6 +48,11 @@ export default async function SeepnMyDealsPage() {
                 <Link href="/seepn/my/inquiries" className="flex-1 rounded-input border border-neutral-200 py-1.5 text-center text-label-caption text-neutral-600 hover:bg-neutral-50">
                   문의 내역
                 </Link>
+                {d.listed && (
+                  <Link href={`/seepn/partners/${d.partnerId}?tab=reviews`} className="flex-1 rounded-input border border-primary-200 py-1.5 text-center text-label-caption text-primary-600 hover:bg-primary-50">
+                    리뷰
+                  </Link>
+                )}
               </div>
             </div>
           ))}

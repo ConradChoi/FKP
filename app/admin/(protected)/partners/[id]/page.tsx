@@ -15,6 +15,7 @@ import {
 } from '@/lib/admin/partnerLabels'
 import { fetchCategoryOptions } from '../categoryOptions'
 import { PartnerDetailTabs } from './PartnerDetailTabs'
+import type { AdminReviewRecord } from './ReviewsTab'
 import { PartnerHeaderActions } from './PartnerHeaderActions'
 
 export interface PartnerDetail {
@@ -170,6 +171,10 @@ export default async function PartnerDetailPage({
     supabase.from('partner_featured_pick').select('active').eq('partner_id', id).eq('active', true).maybeSingle(),
   ])
 
+  // Review moderation list (2026-09-25). An RPC error (e.g. before the review migration is applied)
+  // simply yields an empty list rather than breaking the whole partner detail page.
+  const { data: adminReviews } = await supabase.rpc('admin_list_partner_reviews', { p_partner_id: id })
+
   const categoryRows = categoryLinks ?? []
   const primaryCategoryId = (categoryRows.find((c) => c.role === 'primary')?.standard_category_id as string | undefined) ?? null
   const subCategoryIds = categoryRows.filter((c) => c.role === 'sub').map((c) => c.standard_category_id as string)
@@ -253,6 +258,7 @@ export default async function PartnerDetailPage({
           canUpdate={!!canUpdate}
           canCreateDocument={!!canCreate}
           isFeatured={!!featuredPick}
+          reviews={(adminReviews ?? []) as AdminReviewRecord[]}
         />
       </div>
     </div>

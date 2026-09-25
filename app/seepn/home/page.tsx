@@ -13,6 +13,7 @@ import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
 import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { attachRatings } from '@/lib/seepn/reviews'
 
 const CATEGORY_CARD_COUNT = 5
 const CATEGORY_CARD_CHILDREN_LIMIT = 4
@@ -44,7 +45,7 @@ export default async function SeepnHomePage() {
     // 3-node structure on the partner side) — this page's category nav operates one level down,
     // across all three, matching how /seepn/partners' own sidebar filter already treats them.
     l1Categories = categoryTree.flatMap((root) => root.children)
-    featuredPartners = (featuredRows ?? []) as PartnerCardData[]
+    featuredPartners = await attachRatings(supabase, (featuredRows ?? []) as PartnerCardData[])
   }
 
   const cardCategories = l1Categories.filter((c) => c.children.length > 0).slice(0, CATEGORY_CARD_COUNT)

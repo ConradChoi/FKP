@@ -1,8 +1,7 @@
 // Design Ref: Figma "Seepn 2.0 — UI Design" U-11 마이페이지 (node 42:2) main column — profile card,
 // stat cards, 최근 찜한 공급사, 최근 1:1 문의. Everything shown is real data (buyer_account,
-// buyer_bookmark, seepn_inquiry, buyer_saved_comparison via the buyer's own RLS). 작성 리뷰 keeps its
-// Figma card but shows "-" until reviews exist (no invented numbers); rating badges and company
-// name are not rendered for the same reason.
+// buyer_bookmark, seepn_inquiry, buyer_saved_comparison, partner_review via the buyer's own RLS).
+// The company name is not rendered (no such data is collected).
 import Link from 'next/link'
 import { requireBuyerSession } from '@/lib/seepn/session'
 import { INQUIRY_STATUS_LABELS, VERTICAL_LABELS } from '@/lib/seepn/partnerLabels'
@@ -31,7 +30,7 @@ export default async function SeepnMyHomePage() {
   const session = await requireBuyerSession()
   const { supabase } = session
 
-  const [{ data: account }, { count: bookmarkCount }, { count: inquiryCount }, { data: recentBookmarks }, { data: recentInquiries }, { count: comparedCount }, deals] = await Promise.all([
+  const [{ data: account }, { count: bookmarkCount }, { count: inquiryCount }, { data: recentBookmarks }, { data: recentInquiries }, { count: comparedCount }, deals, { count: reviewCount }] = await Promise.all([
     supabase.from('buyer_account').select('created_at').maybeSingle<{ created_at: string }>(),
     supabase.from('buyer_bookmark').select('partner_id', { count: 'exact', head: true }),
     supabase.from('seepn_inquiry').select('id', { count: 'exact', head: true }),
@@ -39,6 +38,7 @@ export default async function SeepnMyHomePage() {
     supabase.from('seepn_inquiry').select('id, body, status, created_at').order('created_at', { ascending: false }).limit(RECENT_INQUIRY_LIMIT),
     supabase.from('buyer_saved_comparison').select('id', { count: 'exact', head: true }),
     fetchDealPartners(supabase),
+    supabase.from('partner_review').select('id', { count: 'exact', head: true }),
   ])
 
   const bookmarkIds = (recentBookmarks ?? []).map((b: { partner_id: string }) => b.partner_id)
@@ -79,7 +79,7 @@ export default async function SeepnMyHomePage() {
         <StatCard href="/seepn/my/bookmarks" value={`${bookmarkCount ?? 0}개`} label="찜한 공급사" />
         <StatCard href="/seepn/my/compared" value={`${comparedCount ?? 0}개`} label="비교 이력" />
         <StatCard href="/seepn/my/deals" value={`${deals.length}개`} label="거래 공급사" />
-        <StatCard value="-" label="작성 리뷰" />
+        <StatCard value={`${reviewCount ?? 0}개`} label="작성 리뷰" />
         <StatCard href="/seepn/my/inquiries" value={`${inquiryCount ?? 0}건`} label="1:1 문의" />
       </section>
 

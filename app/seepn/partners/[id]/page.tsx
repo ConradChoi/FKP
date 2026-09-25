@@ -25,11 +25,16 @@ import { DetailBookmarkButton } from '@/components/seepn/DetailBookmarkButton'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
 import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 import { PartnerDetailTabs } from '@/components/seepn/PartnerDetailTabs'
+import { RatingStars } from '@/components/seepn/RatingStars'
+import { ReviewForm, type MyReview } from '@/components/seepn/ReviewForm'
+import { fetchDealPartners } from '@/lib/seepn/deals'
+import { RATING_DIMENSIONS, averageOf, fetchRatingSummaries, trustIndex, MIN_REVIEWS_FOR_TRUST_INDEX } from '@/lib/seepn/reviews'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SeepnPartnerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SeepnPartnerDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const { id } = await params
+  const { tab } = await searchParams
   await redirectToLoginIfNoBuyerSession(`/seepn/partners/${id}`)
   const session = await requireBuyerSession()
 
@@ -59,6 +64,42 @@ export default async function SeepnPartnerDetailPage({ params }: { params: Promi
       .in('category_id', categoryIds)
     categoryNames = (translations ?? []).map((t: { name: string }) => t.name)
   }
+
+  // Reviews/ratings (2026-09-25): published reviews (masked reviewer), my own review, eligibility.
+  const [summaryMap, { data: reviewRows }, { data: myReviewRow }, deals] = await Promise.all([
+    fetchRatingSummaries(session.supabase, [id]),
+    session.supabase
+      .from('partner_review_public')
+      .select('id, rating_quality, rating_price, rating_lead_time, rating_service, body, created_at')
+      .eq('partner_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    session.supabase
+      .from('partner_review')
+      .select('rating_quality, rating_price, rating_lead_time, rating_service, body, status')
+      .eq('partner_id', id)
+      .maybeSingle<{ rating_quality: number; rating_price: number; rating_lead_time: number; rating_service: number; body: string | null; status: 'published' | 'hidden' }>(),
+    fetchDealPartners(session.supabase),
+  ])
+  const summary = summaryMap.get(id) ?? null
+  const index = trustIndex(summary)
+  const eligible = deals.some((d) => d.partnerId === id)
+  const myReview: MyReview | null = myReviewRow
+    ? {
+        ratings: { quality: myReviewRow.rating_quality, price: myReviewRow.rating_price, leadTime: myReviewRow.rating_lead_time, service: myReviewRow.rating_service },
+        body: myReviewRow.body,
+        status: myReviewRow.status,
+      }
+    : null
+  const reviews = (reviewRows ?? []) as {
+    id: string
+    rating_quality: number
+    rating_price: number
+    rating_lead_time: number
+    rating_service: number
+    body: string | null
+    created_at: string
+  }[]
 
   const companyName = partner.company_name_ko || '(회사명 미공개)'
 
@@ -183,12 +224,70 @@ export default async function SeepnPartnerDetailPage({ params }: { params: Promi
     </div>
   )
 
-  const comingSoon = (title: string) => (
+  const reviewsPanel = (
+    <div className="space-y-6">
+      <ReviewForm partnerId={id} eligible={eligible} initial={myReview} />
+      <section>
+        <h2 className="text-[18px] font-semibold text-neutral-900">
+          리뷰 <span className="ml-1 text-body-sm font-normal text-neutral-400">{summary?.reviewCount ?? 0}</span>
+        </h2>
+        {reviews.length === 0 ? (
+          <p className="mt-3 rounded-card border border-dashed border-neutral-200 bg-white p-8 text-center text-body-sm text-neutral-500">아직 등록된 리뷰가 없습니다.</p>
+        ) : (
+          <ul className="mt-3 space-y-3">
+            {reviews.map((r) => (
+              <li key={r.id} className="rounded-card border border-neutral-200 bg-white p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-body-sm font-medium text-neutral-800">거래 회원</span>
+                  <span className="text-label-caption text-neutral-400">{new Date(r.created_at).toISOString().slice(0, 10)}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-label-caption text-neutral-600">
+                  <span>품질 <RatingStars value={r.rating_quality} /></span>
+                  <span>가격 <RatingStars value={r.rating_price} /></span>
+                  <span>납기 <RatingStars value={r.rating_lead_time} /></span>
+                  <span>서비스 <RatingStars value={r.rating_service} /></span>
+                </div>
+                {r.body && <p className="mt-2 whitespace-pre-wrap text-body-sm text-neutral-700">{r.body}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+
+  const ratingsPanel = (
     <div>
-      <h2 className="text-[18px] font-semibold text-neutral-900">{title}</h2>
-      <div className="mt-3 rounded-card border border-dashed border-neutral-200 bg-white p-10 text-center">
-        <p className="text-body text-neutral-700">준비 중인 기능입니다.</p>
-      </div>
+      <h2 className="text-[18px] font-semibold text-neutral-900">평가</h2>
+      {!summary ? (
+        <p className="mt-3 rounded-card border border-dashed border-neutral-200 bg-white p-8 text-center text-body-sm text-neutral-500">아직 평가가 없습니다.</p>
+      ) : (
+        <div className="mt-3 rounded-card border border-neutral-200 bg-white p-5">
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className="text-[32px] font-bold text-neutral-900">{summary.avgOverall.toFixed(1)}</span>
+            <RatingStars value={summary.avgOverall} className="text-[18px]" />
+            <span className="text-body-sm text-neutral-500">리뷰 {summary.reviewCount}건 기준</span>
+          </div>
+          <div className="mt-5 space-y-3">
+            {RATING_DIMENSIONS.map((d) => {
+              const avg = averageOf(summary, d.key)
+              return (
+                <div key={d.key} className="flex items-center gap-3">
+                  <span className="w-14 text-body-sm text-neutral-700">{d.label}</span>
+                  <div className="h-2 flex-1 rounded-full bg-primary-100">
+                    <div className="h-2 rounded-full bg-primary-600" style={{ width: `${(avg / 5) * 100}%` }} />
+                  </div>
+                  <span className="w-10 text-right text-body-sm font-medium text-neutral-800">{avg.toFixed(1)}</span>
+                </div>
+              )
+            })}
+          </div>
+          <p className="mt-5 text-label-caption text-neutral-400">
+            신뢰도 지수는 품질·가격·납기·서비스 평균 점수를 100점으로 환산한 값이며, 리뷰가 {MIN_REVIEWS_FOR_TRUST_INDEX}건 이상일 때 표시됩니다.
+            {index === null && ` (현재 ${summary.reviewCount}건)`}
+          </p>
+        </div>
+      )}
     </div>
   )
 
@@ -217,7 +316,13 @@ export default async function SeepnPartnerDetailPage({ params }: { params: Promi
               <span className="h-3 w-px bg-neutral-200" aria-hidden="true" />
               <span title="준비 중">추천 -</span>
               <span className="h-3 w-px bg-neutral-200" aria-hidden="true" />
-              <span title="준비 중">★ - (-)</span>
+              {summary ? (
+                <span className="font-medium text-accent-600">
+                  ★ {summary.avgOverall.toFixed(1)} <span className="font-normal text-neutral-400">({summary.reviewCount})</span>
+                </span>
+              ) : (
+                <span>★ - (-)</span>
+              )}
             </div>
           </div>
 
@@ -235,26 +340,34 @@ export default async function SeepnPartnerDetailPage({ params }: { params: Promi
                 해외거래 경험{partner.overseas_experience_countries?.length ? ` (${partner.overseas_experience_countries.join(', ')})` : ''}
               </span>
             )}
-            <span className="ml-2 text-body-sm font-medium text-primary-600">신뢰도 지수 -</span>
+            <span className="ml-2 text-body-sm font-medium text-primary-600">신뢰도 지수 {index ?? '-'}</span>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-x-3 gap-y-3">
-            {['품질', '가격', '납기', '서비스'].map((label) => (
-              <div key={label} className="w-[100px]">
-                <p className="text-[10px] font-medium text-neutral-600">{label} -</p>
-                <div className="mt-1 h-1 rounded-full bg-primary-200" />
-              </div>
-            ))}
+            {RATING_DIMENSIONS.map((d) => {
+              const avg = summary ? averageOf(summary, d.key) : null
+              return (
+                <div key={d.key} className="w-[100px]">
+                  <p className="text-[10px] font-medium text-neutral-600">
+                    {d.label} {avg === null ? '-' : avg.toFixed(1)}
+                  </p>
+                  <div className="mt-1 h-1 rounded-full bg-primary-200">
+                    {avg !== null && <div className="h-1 rounded-full bg-primary-600" style={{ width: `${(avg / 5) * 100}%` }} />}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
       </div>
 
       <PartnerDetailTabs
+        initialKey={tab}
         tabs={[
           { key: 'intro', label: '기업소개', content: introPanel },
           { key: 'offerings', label: '상품', content: offeringsPanel },
-          { key: 'reviews', label: '리뷰', content: comingSoon('리뷰') },
-          { key: 'ratings', label: '평가', content: comingSoon('평가') },
+          { key: 'reviews', label: '리뷰', content: reviewsPanel },
+          { key: 'ratings', label: '평가', content: ratingsPanel },
         ]}
       />
 

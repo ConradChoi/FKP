@@ -12,8 +12,9 @@ import { DocumentsTab } from './DocumentsTab'
 import { ContactTab } from './ContactTab'
 import { ConsentTab } from './ConsentTab'
 import { HistoryTab } from './HistoryTab'
+import { ReviewsTab, type AdminReviewRecord } from './ReviewsTab'
 
-type TabKey = 'basic' | 'capability' | 'documents' | 'contact' | 'consent' | 'history'
+type TabKey = 'basic' | 'capability' | 'documents' | 'contact' | 'consent' | 'reviews' | 'history'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'basic', label: '기본정보' },
@@ -21,6 +22,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'documents', label: '문서' },
   { key: 'contact', label: '연락처' },
   { key: 'consent', label: '동의/공개노출' },
+  { key: 'reviews', label: '리뷰' },
   { key: 'history', label: '변경이력' },
 ]
 
@@ -40,6 +42,7 @@ export function PartnerDetailTabs({
   canUpdate,
   canCreateDocument,
   isFeatured,
+  reviews,
 }: {
   partner: PartnerDetail
   documents: PartnerDocumentRecord[]
@@ -56,6 +59,7 @@ export function PartnerDetailTabs({
   canUpdate: boolean
   canCreateDocument: boolean
   isFeatured: boolean
+  reviews: AdminReviewRecord[]
 }) {
   const [tab, setTab] = useState<TabKey>('basic')
   const hasBizCertDocument = documents.some((d) => d.doc_type === 'business_registration_cert')
@@ -131,6 +135,7 @@ export function PartnerDetailTabs({
             isFeatured={isFeatured}
           />
         )}
+        {tab === 'reviews' && <ReviewsTab partnerId={partner.id} reviews={reviews} canUpdate={canUpdate} />}
         {tab === 'history' && (
           <div id="history">
             <HistoryTab entries={auditEntries} />

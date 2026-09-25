@@ -16,6 +16,8 @@ export interface PartnerCardData {
   service_types: string[]
   supported_languages: string[]
   overseas_experience: boolean | null
+  // Optional overall rating (attachRatings in lib/seepn/reviews.ts); absent/null = no reviews yet.
+  rating?: { avg: number; count: number } | null
 }
 
 export function PartnerCard({
@@ -90,6 +92,11 @@ export function PartnerCardBody({ partner }: { partner: PartnerCardData }) {
           <span className="rounded-sm bg-accent-50 px-2 py-0.5 text-label-caption text-accent-700">해외거래 경험</span>
         )}
       </div>
+      {partner.rating && (
+        <p className="mt-2 text-label-caption text-accent-600">
+          ★ {partner.rating.avg.toFixed(1)} <span className="text-neutral-400">({partner.rating.count})</span>
+        </p>
+      )}
       {partner.supported_languages.length > 0 && (
         <p className="mt-2 text-label-caption text-neutral-500">
           대응언어: {partner.supported_languages.map(languageLabel).join(', ')}

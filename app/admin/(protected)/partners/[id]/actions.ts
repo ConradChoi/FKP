@@ -389,3 +389,21 @@ export async function deletePartnerDocumentAction(documentId: string, storagePat
   revalidatePath(`/admin/partners/${partnerId}`)
   return { success: true }
 }
+
+
+// 공급사 리뷰 숨김/해제 (2026-09-25). 권한·AAL2 검증은 RPC(admin_set_partner_review_hidden) 안에서
+// 하며, 이 액션은 사용자 세션으로 RPC만 호출한다.
+export async function setPartnerReviewHiddenAction(reviewId: string, hidden: boolean, reason: string, partnerId: string): Promise<ActionResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  const { error } = await supabase.rpc('admin_set_partner_review_hidden', {
+    p_review_id: reviewId,
+    p_hidden: hidden,
+    p_reason: reason.trim() || null,
+  })
+  if (error) return { success: false, error: error.message, errorCode: 'REVIEW_MODERATION_FAILED' }
+
+  revalidatePath(`/admin/partners/${partnerId}`)
+  return { success: true }
+}

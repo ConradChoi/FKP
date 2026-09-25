@@ -14,6 +14,7 @@ import { PartnerFilters, type PartnerFilterValues } from '@/components/seepn/Par
 import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
+import { attachRatings } from '@/lib/seepn/reviews'
 import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 
 const PAGE_SIZE = 18
@@ -138,8 +139,10 @@ export default async function SeepnPartnersPage({ searchParams }: { searchParams
     query.range(from, from + PAGE_SIZE - 1),
     page === 1 ? featuredQuery : Promise.resolve({ data: [] as PartnerCardData[] }),
   ])
-  const partners = (rows ?? []) as PartnerCardData[]
-  const featuredPartners = (featuredRows ?? []) as PartnerCardData[]
+  const [partners, featuredPartners] = await Promise.all([
+    attachRatings(supabase, (rows ?? []) as PartnerCardData[]),
+    attachRatings(supabase, (featuredRows ?? []) as PartnerCardData[]),
+  ])
   const totalPages = Math.max(1, Math.ceil((filteredCount ?? 0) / PAGE_SIZE))
 
   const filterValues: PartnerFilterValues = {

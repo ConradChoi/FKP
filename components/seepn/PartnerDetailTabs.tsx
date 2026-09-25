@@ -10,8 +10,8 @@ export interface PartnerDetailTab {
   content: React.ReactNode
 }
 
-export function PartnerDetailTabs({ tabs }: { tabs: PartnerDetailTab[] }) {
-  const [activeKey, setActiveKey] = useState(tabs[0]?.key)
+export function PartnerDetailTabs({ tabs, initialKey }: { tabs: PartnerDetailTab[]; initialKey?: string }) {
+  const [activeKey, setActiveKey] = useState(tabs.some((t) => t.key === initialKey) ? initialKey : tabs[0]?.key)
   const active = tabs.find((t) => t.key === activeKey) ?? tabs[0]
   return (
     <>
