@@ -39,7 +39,7 @@ export default async function AdminProtectedLayout({ children }: { children: Rea
 
   return (
     <div className="flex min-h-screen bg-neutral-50">
-      <AdminSidebar menuTree={menuTree} displayName={context.display_name} />
+      <AdminSidebar menuTree={menuTree} />
       <div className="flex-1">
         <AdminTopbar
           menuTree={menuTree}

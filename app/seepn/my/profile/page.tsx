@@ -5,6 +5,7 @@
 import { requireBuyerSession } from '@/lib/seepn/session'
 import type { BuyerConsentsByType } from '@/lib/seepn/types'
 import { DisplayNameForm } from '@/components/seepn/DisplayNameForm'
+import { NicknameForm } from '@/components/seepn/NicknameForm'
 import { MarketingConsentSettings } from '@/components/seepn/MarketingConsentSettings'
 
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic'
 export default async function SeepnMyProfilePage() {
   const session = await requireBuyerSession()
   const { data: consentsData, error: consentsError } = await session.supabase.rpc('get_own_buyer_consents')
+  const { data: nicknameRow } = await session.supabase.from('buyer_account').select('nickname').maybeSingle<{ nickname: string | null }>()
 
   return (
     <div className="space-y-8">
@@ -21,6 +23,13 @@ export default async function SeepnMyProfilePage() {
           <DisplayNameForm accountId={session.account.id} initialDisplayName={session.account.display_name} email={session.email} />
         </div>
       </div>
+
+      <section>
+        <h2 className="text-body font-semibold text-neutral-900">커뮤니티 닉네임</h2>
+        <div className="mt-3">
+          <NicknameForm initial={nicknameRow?.nickname ?? null} />
+        </div>
+      </section>
 
       <section>
         <h2 className="text-body font-semibold text-neutral-900">마케팅 수신 동의</h2>

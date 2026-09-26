@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import { HeaderAccount } from '@/components/seepn/HeaderAccount'
 
-export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' | 'insights' | 'faq' }) {
+export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' | 'top100' | 'community' | 'insights' | 'faq' }) {
   return (
     <header className="sticky top-0 z-40 bg-[#0f1732]">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
@@ -16,8 +16,12 @@ export function SeepnMainHeader({ account, active }: { account?: React.ReactNode
             <NavLink href="/seepn/partners" current={active === 'partners'}>
               공급사 찾기
             </NavLink>
-            <span className="cursor-default text-[#6b7699]">TOP100</span>
-            <span className="cursor-default text-[#6b7699]">커뮤니티</span>
+            <NavLink href="/seepn/top100" current={active === 'top100'}>
+              TOP100
+            </NavLink>
+            <NavLink href="/seepn/community" current={active === 'community'}>
+              커뮤니티
+            </NavLink>
             <NavLink href="/seepn/insights" current={active === 'insights'}>
               인사이트
             </NavLink>

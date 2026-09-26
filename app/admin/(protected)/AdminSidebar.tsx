@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { MenuNode } from './layout'
 import { MenuIcon } from '@/components/admin/MenuIcon'
-import { SignOutButton } from './SignOutButton'
 
 function NavItem({ node, depth }: { node: MenuNode; depth: number }) {
   const pathname = usePathname()
@@ -44,7 +43,7 @@ function NavItem({ node, depth }: { node: MenuNode; depth: number }) {
   )
 }
 
-export function AdminSidebar({ menuTree, displayName }: { menuTree: MenuNode[]; displayName: string }) {
+export function AdminSidebar({ menuTree }: { menuTree: MenuNode[] }) {
   return (
     <nav className="flex w-60 shrink-0 flex-col bg-sidebar">
       <div className="flex flex-col gap-0.5 bg-sidebar-footer px-4 py-5">
@@ -55,10 +54,6 @@ export function AdminSidebar({ menuTree, displayName }: { menuTree: MenuNode[]; 
         {menuTree.map((node) => (
           <NavItem key={node.id} node={node} depth={1} />
         ))}
-      </div>
-      <div className="flex items-center justify-between gap-2 bg-sidebar-footer px-4 py-3">
-        <p className="admin-body-sm truncate text-neutral-0">{displayName}</p>
-        <SignOutButton />
       </div>
     </nav>
   )

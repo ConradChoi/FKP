@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { flattenMenuTree, findMenuForPath } from '@/lib/admin/menuTree'
 import { Avatar } from '@/components/admin/Avatar'
 import { NotificationBell } from './NotificationBell'
+import { SignOutButton } from './SignOutButton'
 import type { MenuNode } from './layout'
 
 export function AdminTopbar({
@@ -41,6 +42,7 @@ export function AdminTopbar({
             <p className="admin-label-sm text-neutral-400">{roleCodes.join(', ')}</p>
           </div>
         </div>
+        <SignOutButton />
       </div>
     </header>
   )
