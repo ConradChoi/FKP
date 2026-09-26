@@ -38,6 +38,9 @@ export async function requireBuyerSession(): Promise<BuyerSession> {
   // property (screen-spec §1.3) is supposed to work.
   if (!account) redirect('/seepn/login')
 
+  // 휴면 계정은 비밀번호 재입력·재동의·비밀번호 변경을 마칠 때까지 회원 기능을 쓸 수 없다.
+  if (account.status === 'dormant') redirect('/seepn/dormant/release')
+
   if (account.status === 'withdrawn' || account.status === 'suspended') {
     redirect('/seepn/login')
   }

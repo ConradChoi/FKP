@@ -26,9 +26,10 @@ export default async function AdminSeepnInquiryDetailPage({ params }: { params: 
   if (error || !detail) notFound()
 
   const inquiry = detail as unknown as AdminSeepnInquiryDetail
-  const [{ data: adminsRaw }, { data: canUpdate }] = await Promise.all([
+  const [{ data: adminsRaw }, { data: canUpdate }, { data: spamRaw }] = await Promise.all([
     supabase.rpc('list_admin_users_for_assignment'),
     supabase.rpc('has_menu_permission_check', { p_menu_code: 'lead_management', p_action: 'update' }),
+    supabase.rpc('admin_get_seepn_inquiry_spam', { p_inquiry_id: id }),
   ])
   const admins = (adminsRaw ?? []) as { id: string; display_name: string }[]
 
@@ -83,6 +84,7 @@ export default async function AdminSeepnInquiryDetailPage({ params }: { params: 
             inquiryId={id}
             currentStatus={inquiry.status}
             currentAssignedAdminId={inquiry.assigned_admin_id}
+            currentSpam={spamRaw === true}
             admins={admins}
           />
         ) : (

@@ -21,6 +21,10 @@ export function SeepnFooter() {
           <Link href="/seepn/legal/privacy" className="hover:text-neutral-700 hover:underline">
             개인정보처리방침
           </Link>
+          <span aria-hidden="true">·</span>
+          <Link href="/seepn/legal/takedown" className="hover:text-neutral-700 hover:underline">
+            게시중단 요청
+          </Link>
         </div>
       </div>
     </footer>

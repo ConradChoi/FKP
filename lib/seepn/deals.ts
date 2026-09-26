@@ -1,7 +1,7 @@
 // 거래 공급사 = 내 문의 중 운영자가 처리에 착수한 건(status <> 'new': 처리중/완료)에 포함된 공급사
 // (2026-09-24 대표 정의: "바이어와 공급사 간 진행 데이터가 있을 경우 거래"). 새 테이블 없이 본인
 // 문의(RLS: 본인 행만)에서 파생한다. 기존 match/outcome 데이터는 계정 없는 FKP 요청용이라 SEEPN
-// 회원 계정과 연결되어 있지 않아 사용하지 않는다.
+// 회원 계정과 연결되어 있지 않아 사용하지 않는다. 스팸 표시된 문의는 제외(2026-09-26 리뷰 자격 결정).
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export interface DealPartner {
@@ -18,6 +18,7 @@ export async function fetchDealPartners(supabase: SupabaseClient): Promise<DealP
     .from('seepn_inquiry')
     .select('id, status, created_at')
     .neq('status', 'new')
+    .eq('is_spam', false) // 운영자가 스팸으로 표시한 문의는 거래(=리뷰 자격)에서 제외
     .order('created_at', { ascending: false })
   const rows = (inquiries ?? []) as { id: string; status: string; created_at: string }[]
   if (rows.length === 0) return []

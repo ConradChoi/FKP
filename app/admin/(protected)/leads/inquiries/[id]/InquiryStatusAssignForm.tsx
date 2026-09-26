@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminInputClass } from '@/components/admin/styles'
 import { INQUIRY_STATUS_LABELS } from '@/lib/seepn/partnerLabels'
-import { updateSeepnInquiryStatusAction, assignSeepnInquiryAction } from './actions'
+import { updateSeepnInquiryStatusAction, assignSeepnInquiryAction, setSeepnInquirySpamAction } from './actions'
 
 interface AdminOption {
   id: string
@@ -19,17 +19,20 @@ export function InquiryStatusAssignForm({
   inquiryId,
   currentStatus,
   currentAssignedAdminId,
+  currentSpam,
   admins,
 }: {
   inquiryId: string
   currentStatus: string
   currentAssignedAdminId: string | null
+  currentSpam: boolean
   admins: AdminOption[]
 }) {
   const router = useRouter()
   const [status, setStatus] = useState(currentStatus)
   const [assignedAdminId, setAssignedAdminId] = useState(currentAssignedAdminId ?? '')
-  const [savingField, setSavingField] = useState<'status' | 'assignee' | null>(null)
+  const [spam, setSpam] = useState(currentSpam)
+  const [savingField, setSavingField] = useState<'status' | 'assignee' | 'spam' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function handleStatusChange(next: string) {
@@ -41,6 +44,20 @@ export function InquiryStatusAssignForm({
     if (!result.success) {
       setError('상태 변경에 실패했습니다.')
       setStatus(currentStatus)
+      return
+    }
+    router.refresh()
+  }
+
+  async function handleSpamChange(next: boolean) {
+    setSpam(next)
+    setSavingField('spam')
+    setError(null)
+    const result = await setSeepnInquirySpamAction(inquiryId, next)
+    setSavingField(null)
+    if (!result.success) {
+      setError('스팸 표시 변경에 실패했습니다.')
+      setSpam(currentSpam)
       return
     }
     router.refresh()
@@ -82,6 +99,13 @@ export function InquiryStatusAssignForm({
             </option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className="mb-1 block admin-label-sm text-neutral-500">스팸 문의</label>
+        <label className="flex items-center gap-2 admin-body-sm text-neutral-700">
+          <input type="checkbox" checked={spam} disabled={savingField === 'spam'} onChange={(e) => handleSpamChange(e.target.checked)} />
+          스팸으로 표시 (리뷰 작성 자격·거래 공급사에서 제외)
+        </label>
       </div>
       {error && <p className="admin-label-sm text-error">{error}</p>}
     </div>

@@ -38,6 +38,17 @@ export async function updateSeepnInquiryStatusAction(inquiryId: string, status: 
   return { success: true }
 }
 
+export async function setSeepnInquirySpamAction(inquiryId: string, spam: boolean): Promise<ActionResult> {
+  const supabase = await getSupabaseAuthServerClient()
+  if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }
+
+  const { error } = await supabase.rpc('admin_set_seepn_inquiry_spam', { p_inquiry_id: inquiryId, p_spam: spam })
+  if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
+
+  revalidatePath(`/admin/leads/inquiries/${inquiryId}`)
+  return { success: true }
+}
+
 export async function assignSeepnInquiryAction(inquiryId: string, adminId: string | null): Promise<ActionResult> {
   const supabase = await getSupabaseAuthServerClient()
   if (!supabase) return { success: false, error: 'service_unavailable', errorCode: 'CONFIG_ERROR' }

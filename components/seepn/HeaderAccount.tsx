@@ -26,11 +26,11 @@ export function HeaderAccount() {
         setState({ kind: 'anon' })
         return
       }
-      const { data: account } = await supabase.from('buyer_account').select('display_name').maybeSingle<{ display_name: string }>()
+      const { data: account } = await supabase.from('buyer_account').select('display_name, status').maybeSingle<{ display_name: string; status: string }>()
       if (cancelled) return
       // A session without a buyer_account row (e.g. an admin/partner login on this browser) is
       // not a buyer login — keep showing 로그인.
-      setState(account ? { kind: 'user', displayName: account.display_name } : { kind: 'anon' })
+      setState(account && account.status === 'active' ? { kind: 'user', displayName: account.display_name } : { kind: 'anon' })
     }
     void run()
     return () => {

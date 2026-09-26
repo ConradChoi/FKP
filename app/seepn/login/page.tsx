@@ -70,6 +70,14 @@ function LoginContent() {
       setError(BLOCKED_ACCOUNT_MESSAGE)
       return
     }
+    if (account.status === 'dormant') {
+      // 휴면 계정: 세션은 유지한 채 해제 절차(비밀번호 재입력·재동의·비밀번호 변경)로 보낸다.
+      // last_login_at은 해제가 끝나기 전에는 갱신하지 않는다(record_buyer_login 생략).
+      setLoading(false)
+      router.push('/seepn/dormant/release')
+      router.refresh()
+      return
+    }
     if (account.status === 'suspended') {
       await supabase.auth.signOut()
       setLoading(false)

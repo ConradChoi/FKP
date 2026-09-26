@@ -175,7 +175,7 @@
 | 사업자등록번호 | 832-86-03446 |
 | 주소 | 경기도 광명시 오리로 362, 4층 (4F, 362 Ori-ro, Gwangmyeong-si, Gyeonggi-do, Republic of Korea) |
 | 이메일 | jhc@ylia.io |
-| 고객센터 | support@seepn.me |
+| 고객센터 | info@ylia.io |
 
 ## 부칙
 

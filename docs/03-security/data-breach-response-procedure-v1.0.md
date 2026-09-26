@@ -33,7 +33,7 @@
 
 | 경로 | 실재 여부 |
 |---|---|
-| 파트너·바이어·외부 제보 (`support@seepn.me`) | **있음** |
+| 파트너·바이어·외부 제보 (`info@ylia.io`) | **있음** |
 | 보호위/KISA/언론/보안연구자의 통보 | **있음(수동)** |
 | Supabase Dashboard 로그·이메일 알림 | **있음(수동 확인)** |
 | `public.audit_log`(`auth.login_failed`, `auth.access_denied`, `*.contact_reveal`), `private.login_lockout` | **있음 — 단 자동 알림 없음. 사람이 열어봐야 보인다** |
@@ -178,7 +178,7 @@ where au.status = 'active';
 
 5. 신고 등을 접수할 수 있는 담당부서 및 연락처
    - 개인정보 보호책임자: 최종훈 (대표이사) / jhc@ylia.io
-   - 고객센터: support@seepn.me
+   - 고객센터: info@ylia.io
    - 외부 기관: 개인정보침해신고센터(국번없이 118, privacy.kisa.or.kr),
      개인정보분쟁조정위원회(1833-6972, www.kopico.go.kr)
 

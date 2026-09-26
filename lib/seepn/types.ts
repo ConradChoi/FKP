@@ -6,7 +6,7 @@
 export interface BuyerAccount {
   id: string
   display_name: string
-  status: 'pending_email' | 'active' | 'suspended' | 'withdrawn'
+  status: 'pending_email' | 'active' | 'dormant' | 'suspended' | 'withdrawn'
 }
 
 export interface PartnerListPublicRow {

@@ -14,7 +14,7 @@ export default function SupplierSupportPage() {
           문의사항은 아래 이메일로 연락해주세요. 개인정보 열람·정정·삭제·처리정지·동의철회
           요구도 같은 창구에서 접수합니다.
         </p>
-        <p className="mt-4 text-body font-medium text-neutral-900">support@seepn.me</p>
+        <p className="mt-4 text-body font-medium text-neutral-900">info@ylia.io</p>
       </main>
       <SupplierFooter />
     </div>
