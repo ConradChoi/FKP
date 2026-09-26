@@ -84,7 +84,7 @@ const NOTICE_PUBLISH_CONFIRM_MESSAGE =
   '게시하면 이 공지의 제목·요약·본문은 로그인 없이 인터넷 누구나 조회할 수 있습니다. 특정 파트너의 상호·담당자·연락처·심사 결과나 개인정보가 담긴 내용이 들어있지 않은지 확인하셨습니까?'
 
 const SEEPN_USER_NO_CONSUMER_SCREEN_WARNING =
-  '이 대상은 아직 볼 수 있는 화면이 없습니다 — seepn.me 준비 중. 지금 게시해도 아무도 보지 못합니다.'
+  'SEEPN 회원용 공지는 seepn.me 공지사항에 한국어(ko) 본문으로 게시됩니다. 게시 상태이면서 한국어 번역이 게시(published)여야 보입니다.'
 
 const TARGET_AUDIENCE_LABELS: Record<NoticeTargetAudience, string> = {
   partner: '파트너',
@@ -331,16 +331,14 @@ export function ArticleRow({
   const sourceTitle = article.translations[sourceLocale]?.title ?? ''
   const sourceExcerpt = article.translations[sourceLocale]?.excerpt ?? ''
   const sourceBodyMarkdown = article.translations[sourceLocale]?.bodyMarkdown ?? ''
-  // notice-board-v1.0.prd.md §7.5 G-6 — the AI-fill button must never render for notice,
-  // regardless of target_audience (partner has no translation target at all; seepn_user AI-fill
-  // is deliberately out of scope, W-N6). The server action (aiFillArticleTranslationAction)
-  // rejects both content_type==='case_study' and ==='notice' independently — this is UI-only.
-  const showAiFill = contentType !== 'case_study' && contentType !== 'notice'
+  // notice AI-fill: enabled only for target_audience='seepn_user' (2026-09-26); see showAiFill below.
 
   // D-N3 (PRD §3.4) / screen-spec §3.5 — locked once any non-ko translation row exists. Always
   // false for case_study (irrelevant there; contentType !== 'notice' short-circuits it).
   const locked = isNotice && Object.entries(article.translations).some(([loc, row]) => loc !== 'ko' && row !== null)
   const [audienceValue, setAudienceValue] = useState<NoticeTargetAudience | null>(article.targetAudience)
+  // 공지는 SEEPN 회원용(seepn_user)일 때만 en/ja 번역 대상이 있다(partner는 ko 단일). 서버 액션도 같은 기준으로 재검증한다.
+  const showAiFill = contentType !== 'case_study' && (contentType !== 'notice' || article.targetAudience === 'seepn_user')
   const [audienceSaving, setAudienceSaving] = useState(false)
   const [audienceError, setAudienceError] = useState<string | null>(null)
 

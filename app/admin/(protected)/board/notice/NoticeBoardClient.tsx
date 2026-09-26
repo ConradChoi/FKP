@@ -11,7 +11,7 @@ import { ArticleRow, type ArticleRecord, type ArticleLocaleConfig } from '../Art
 import { NewNoticeForm } from './NewNoticeForm'
 
 const SEEPN_USER_NO_CONSUMER_SCREEN_WARNING =
-  '이 대상은 아직 볼 수 있는 화면이 없습니다 — seepn.me 준비 중. 지금 게시해도 아무도 보지 못합니다.'
+  'SEEPN 회원용 공지는 seepn.me 공지사항에 한국어(ko) 본문으로 게시됩니다. 게시 상태이면서 한국어 번역이 게시(published)여야 보입니다.'
 
 // notice-board-v1.0.prd.md §3.1/§7.2 (N-R12/G-2′) — partner is ko-only, seepn_user is ko/en/ja.
 // Computed per-row below from each article's own targetAudience, not passed once for the whole

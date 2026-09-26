@@ -28,6 +28,12 @@ const ADMIN_PATH: Record<ArticleContentType, string> = {
   notice: '/admin/board/notice',
 }
 const FAQ_ADMIN_PATH = '/admin/board/faq'
+// SEEPN 공개 화면(공지 목록·상세·홈)은 5분 캐시라, 관리자가 저장하면 즉시 반영되도록 함께 무효화한다.
+const SEEPN_PUBLIC_NOTICE_PATHS = ['/seepn/notices', '/seepn/home']
+function revalidateSeepnNotices() {
+  for (const path of SEEPN_PUBLIC_NOTICE_PATHS) revalidatePath(path)
+  revalidatePath('/seepn/notices/[slug]', 'page')
+}
 const ALL_BOARD_PATHS = [ADMIN_PATH.case_study, ADMIN_PATH.notice, FAQ_ADMIN_PATH]
 
 // notice-board-v1.0.prd.md §7.5 G-3 — notices MUST be created with source_locale='ko' and an
@@ -156,6 +162,7 @@ export async function createNoticeAction(input: CreateNoticeInput): Promise<Acti
   if (translationError) return { success: false, error: translationError.message, errorCode: 'CREATE_FAILED' }
 
   revalidatePath(ADMIN_PATH.notice)
+  revalidateSeepnNotices()
   return { success: true }
 }
 
@@ -257,6 +264,7 @@ export async function updateArticleItemAction(input: UpdateArticleItemInput): Pr
 
   // 이 함수는 블로그/사례/FAQ/공지 공용이라 어떤 게시판 소속인지 모른다 — 넷 다 revalidate(저비용).
   for (const path of ALL_BOARD_PATHS) revalidatePath(path)
+  revalidateSeepnNotices()
   return { success: true }
 }
 
@@ -268,6 +276,7 @@ export async function deleteContentItemAction(contentItemId: string): Promise<Ac
   if (error) return { success: false, error: error.message, errorCode: 'DELETE_FAILED' }
 
   for (const path of ALL_BOARD_PATHS) revalidatePath(path)
+  revalidateSeepnNotices()
   return { success: true }
 }
 
@@ -293,6 +302,7 @@ export async function upsertArticleTranslationAction(input: UpsertArticleTransla
   if (error) return { success: false, error: error.message, errorCode: 'UPDATE_FAILED' }
 
   for (const path of ALL_BOARD_PATHS) revalidatePath(path)
+  revalidateSeepnNotices()
   return { success: true }
 }
 
@@ -333,7 +343,7 @@ export async function aiFillArticleTranslationAction(
 
   const { data: item, error: itemError } = await supabase
     .from('content_item')
-    .select('content_type, source_locale')
+    .select('content_type, source_locale, target_audience')
     .eq('id', input.contentItemId)
     .maybeSingle()
   if (itemError || !item) {
@@ -360,7 +370,9 @@ export async function aiFillArticleTranslationAction(
   // (case_study와 동일 패턴). CASE_STUDY_NOT_ALLOWED를 재사용하지 않고 별도 코드를 쓰는 이유는
   // lib/server/aiFill.ts의 NOTICE_NOT_ALLOWED 주석 참고 — case_study는 영구 배제, notice는
   // "아직" 배제라 나중에 구분해야 한다.
-  if (item.content_type === 'notice') {
+  // 2026-09-26 대표 결정: SEEPN 회원용(seepn_user) 공지는 en/ja 번역 대상이 실재하므로 AI 초벌을 허용한다.
+  // 파트너용(partner) 공지는 ko 단일이라 번역 대상이 없어 계속 거부한다.
+  if (item.content_type === 'notice' && item.target_audience !== 'seepn_user') {
     return { success: false, errorCode: 'NOTICE_NOT_ALLOWED' }
   }
 
@@ -414,6 +426,7 @@ export async function aiFillArticleTranslationAction(
   if (upsertError) return { success: false, errorCode: 'SAVE_FAILED', message: upsertError.message }
 
   for (const path of ALL_BOARD_PATHS) revalidatePath(path)
+  revalidateSeepnNotices()
 
   // (7) 번역 결과 반환 — router.refresh()에 의존하지 않고 클라이언트가 이 값으로 로컬 state를
   // 직접 갱신해야 함(§6.4, frontend-developer 몫).
@@ -569,6 +582,7 @@ export async function aiFillFaqTranslationAction(
   if (upsertError) return { success: false, errorCode: 'SAVE_FAILED', message: upsertError.message }
 
   for (const path of ALL_BOARD_PATHS) revalidatePath(path)
+  revalidateSeepnNotices()
 
   // (7) 번역 결과 반환 — router.refresh()에 의존하지 않고 클라이언트가 이 값으로 로컬 state를
   // 직접 갱신해야 함(§6.4, frontend-developer 몫).

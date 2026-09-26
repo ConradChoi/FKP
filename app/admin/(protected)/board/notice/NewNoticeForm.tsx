@@ -16,7 +16,7 @@ import { adminInputClass, adminButtonPrimaryClass } from '@/components/admin/sty
 import { NoticeBodyEditor } from '@/components/admin/NoticeBodyEditor'
 
 const SEEPN_USER_NO_CONSUMER_SCREEN_WARNING =
-  '이 대상은 아직 볼 수 있는 화면이 없습니다 — seepn.me 준비 중. 지금 게시해도 아무도 보지 못합니다.'
+  'SEEPN 회원용 공지는 seepn.me 공지사항에 한국어(ko) 본문으로 게시됩니다. 게시 상태이면서 한국어 번역이 게시(published)여야 보입니다.'
 
 // notice-board-v1.0.prd.md §9 NS-1 / screen-spec §3.9 — identical wording to the one rendered
 // inside ArticleRow.tsx's edit view (../ArticleRow.tsx); both must always say the same thing.
