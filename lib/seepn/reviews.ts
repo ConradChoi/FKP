@@ -68,3 +68,27 @@ export async function attachRatings<T extends { id: string }>(supabase: Supabase
     return { ...r, rating: s ? { avg: s.avgOverall, count: s.reviewCount } : null }
   })
 }
+
+export interface HomeKpis {
+  partnerCount: number
+  categoryCount: number
+  reviewCount: number
+  avgRating: number | null
+}
+
+// 홈 히어로 KPI (실제 집계). 모두 anon으로 읽히는 공개 데이터다: 공개 목록 공급사 수, 활성 표준
+// 카테고리(루트 제외) 수, 게시 리뷰 수와 리뷰 수 가중 평균 평점(partner_rating_summary).
+export async function fetchHomeKpis(supabase: SupabaseClient): Promise<HomeKpis> {
+  const [{ count: partnerCount }, { count: categoryCount }, { data: summaries }] = await Promise.all([
+    supabase.from('partner_list_public').select('id', { count: 'exact', head: true }),
+    supabase.from('standard_category').select('id', { count: 'exact', head: true }).eq('is_active', true).not('parent_id', 'is', null),
+    supabase.from('partner_rating_summary').select('review_count, avg_overall'),
+  ])
+  let reviewCount = 0
+  let weighted = 0
+  for (const r of (summaries ?? []) as { review_count: number; avg_overall: number | string }[]) {
+    reviewCount += r.review_count
+    weighted += r.review_count * Number(r.avg_overall)
+  }
+  return { partnerCount: partnerCount ?? 0, categoryCount: categoryCount ?? 0, reviewCount, avgRating: reviewCount > 0 ? weighted / reviewCount : null }
+}

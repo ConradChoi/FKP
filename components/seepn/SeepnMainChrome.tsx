@@ -4,7 +4,7 @@
 import Link from 'next/link'
 import { HeaderAccount } from '@/components/seepn/HeaderAccount'
 
-export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' }) {
+export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' | 'insights' | 'faq' }) {
   return (
     <header className="sticky top-0 z-40 bg-[#0f1732]">
       <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
@@ -13,16 +13,17 @@ export function SeepnMainHeader({ account, active }: { account?: React.ReactNode
             SEEPN
           </Link>
           <nav className="hidden items-center gap-6 text-body-sm text-[#b2bfd9] md:flex">
-            <Link
-              href="/seepn/partners"
-              className={active === 'partners' ? 'relative font-semibold text-white after:absolute after:inset-x-0 after:-bottom-[25px] after:h-[3px] after:bg-[#60a5fa]' : 'hover:text-white'}
-            >
+            <NavLink href="/seepn/partners" current={active === 'partners'}>
               공급사 찾기
-            </Link>
+            </NavLink>
             <span className="cursor-default text-[#6b7699]">TOP100</span>
             <span className="cursor-default text-[#6b7699]">커뮤니티</span>
-            <span className="cursor-default text-[#6b7699]">인사이트</span>
-            <span className="cursor-default text-[#6b7699]">FAQ</span>
+            <NavLink href="/seepn/insights" current={active === 'insights'}>
+              인사이트
+            </NavLink>
+            <NavLink href="/seepn/faq" current={active === 'faq'}>
+              FAQ
+            </NavLink>
           </nav>
         </div>
         <div className="flex items-center gap-3">
@@ -47,5 +48,16 @@ export function SeepnMainHeader({ account, active }: { account?: React.ReactNode
         </div>
       </div>
     </header>
+  )
+}
+
+function NavLink({ href, current, children }: { href: string; current: boolean; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className={current ? 'relative font-semibold text-white after:absolute after:inset-x-0 after:-bottom-[25px] after:h-[3px] after:bg-[#60a5fa]' : 'hover:text-white'}
+    >
+      {children}
+    </Link>
   )
 }

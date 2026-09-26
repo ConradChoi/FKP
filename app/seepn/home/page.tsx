@@ -13,7 +13,9 @@ import { PartnerListClient } from '@/components/seepn/PartnerListClient'
 import type { PartnerCardData } from '@/components/seepn/PartnerCard'
 import { SeepnMainHeader } from '@/components/seepn/SeepnMainChrome'
 import { SeepnFooter } from '@/components/seepn/SeepnFooter'
-import { attachRatings } from '@/lib/seepn/reviews'
+import { attachRatings, fetchHomeKpis, type HomeKpis } from '@/lib/seepn/reviews'
+import { getPublishedSeepnInsights, type SeepnInsightListItem } from '@/lib/content/getPublishedSeepnContent'
+import { formatDotDate } from '@/lib/seepn/formatDate'
 
 const CATEGORY_CARD_COUNT = 5
 const CATEGORY_CARD_CHILDREN_LIMIT = 4
@@ -31,8 +33,11 @@ export default async function SeepnHomePage() {
 
   let l1Categories: CategoryNode[] = []
   let featuredPartners: PartnerCardData[] = []
+  let kpis: HomeKpis | null = null
+  const insights: SeepnInsightListItem[] = await getPublishedSeepnInsights(3)
 
   if (supabase) {
+    kpis = await fetchHomeKpis(supabase)
     const [categoryTree, { data: featuredRows }] = await Promise.all([
       fetchPublicCategoryTree(supabase),
       supabase
@@ -54,18 +59,18 @@ export default async function SeepnHomePage() {
   return (
     <div className="min-h-screen bg-[#f9fafb]">
       <SeepnMainHeader />
-      <Hero />
+      <Hero kpis={kpis} />
       <PopularSuppliers partners={featuredPartners} />
       <CategoryQuick tabs={tabCategories} cards={cardCategories} />
       <WhySeepn />
-      <Insights />
+      <Insights insights={insights} />
       <SupplierCta />
       <SeepnFooter />
     </div>
   )
 }
 
-function Hero() {
+function Hero({ kpis }: { kpis: HomeKpis | null }) {
   return (
     <section className="relative overflow-hidden bg-[#0f1732] py-16">
       <div className="pointer-events-none absolute -right-32 -top-32 h-[520px] w-[520px] rounded-full bg-[#254182]" aria-hidden="true" />
@@ -107,13 +112,13 @@ function Hero() {
             ))}
           </div>
         </div>
-        {/* KPI 카드: 정적 플레이스홀더 — 평점/응답시간 등은 이 서비스에 아직 없는 지표입니다. */}
+        {/* KPI: 실제 집계 값. 평균 응답시간은 집계할 데이터가 없어 누적 리뷰 수로 대체했다. */}
         <div className="grid grid-cols-2 gap-4">
           {[
-            ['12,847+', '등록 공급사'],
-            ['247개', '품목 분류'],
-            ['4.8★', '평균 평점'],
-            ['2.3시간', '평균 응답'],
+            [kpis ? `${kpis.partnerCount.toLocaleString('ko-KR')}곳` : '-', '등록 공급사'],
+            [kpis ? `${kpis.categoryCount.toLocaleString('ko-KR')}개` : '-', '품목 분류'],
+            [kpis && kpis.avgRating !== null ? `${kpis.avgRating.toFixed(1)}★` : '-', '평균 평점'],
+            [kpis ? `${kpis.reviewCount.toLocaleString('ko-KR')}건` : '-', '누적 리뷰'],
           ].map(([value, label]) => (
             <div key={label} className="w-[160px] rounded-card bg-[#1b2d5f] p-5">
               <p className="text-[28px] font-semibold text-white">{value}</p>
@@ -200,13 +205,11 @@ function CategoryQuick({ tabs, cards }: { tabs: CategoryNode[]; cards: CategoryN
   )
 }
 
-// 정적 플레이스홀더 섹션 — 4차원 평가/실시간 비교/인증 시스템은 카피만 옮긴 것으로, 이 서비스가
-// 실제로 그 기준을 계산해 보여주는 기능은 아직 없습니다.
 function WhySeepn() {
   const items = [
-    { title: '4차원 신뢰 평가', desc: '품질·가격·서비스·납기 4가지 기준으로 검증된 공급사 정보를 제공합니다' },
+    { title: '4차원 신뢰 평가', desc: '거래한 회원이 품질·가격·납기·서비스 4가지 기준으로 남긴 평가를 확인하세요' },
     { title: '실시간 비교', desc: '여러 공급사를 한 화면에서 비교하고 최적의 파트너를 선택하세요' },
-    { title: '인증 시스템', desc: '파트너·우수·ISO 인증을 받은 신뢰할 수 있는 공급사만 표시됩니다' },
+    { title: '검증된 공급사', desc: '운영자가 사업자 정보를 검증하고 공개에 동의한 공급사만 목록에 표시됩니다' },
   ]
   return (
     <section className="border-t border-neutral-200 bg-white py-14">
@@ -226,24 +229,24 @@ function WhySeepn() {
   )
 }
 
-// 정적 플레이스홀더 — 인사이트(블로그/아티클) 기능 자체가 아직 이 서비스에 없습니다.
-function Insights() {
-  const articles = [
-    { tag: 'IT·소프트웨어', title: '2026 IT 장비 조달 트렌드 TOP 10', date: '2026.06.01' },
-    { tag: '물류', title: '효율적인 공급사 평가 방법 가이드', date: '2026.05.28' },
-    { tag: '시설관리', title: '물류비 절감을 위한 공급사 선택 기준', date: '2026.05.24' },
-  ]
+function Insights({ insights }: { insights: SeepnInsightListItem[] }) {
+  if (insights.length === 0) return null
   return (
     <section className="border-t border-neutral-200 bg-[#f9fafb] py-14">
       <div className="mx-auto max-w-6xl px-6">
-        <h2 className="text-h3 text-neutral-900">조달 담당자를 위한 B2B 인사이트</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-h3 text-neutral-900">조달 담당자를 위한 B2B 인사이트</h2>
+          <Link href="/seepn/insights" className="text-body-sm text-primary-600 hover:underline">
+            전체 인사이트 →
+          </Link>
+        </div>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {articles.map((a) => (
-            <div key={a.title} className="rounded-card border border-neutral-200 bg-white p-4">
-              <span className="inline-block rounded-full bg-primary-50 px-2.5 py-1 text-label-caption text-primary-600">{a.tag}</span>
+          {insights.map((a) => (
+            <Link key={a.slug} href={`/seepn/insights/${a.slug}`} className="rounded-card border border-neutral-200 bg-white p-4 hover:shadow-sm">
+              <span className="inline-block rounded-full bg-primary-50 px-2.5 py-1 text-label-caption text-primary-600">{a.category}</span>
               <p className="mt-3 text-body-sm font-semibold text-neutral-900">{a.title}</p>
-              <p className="mt-6 text-label-caption text-neutral-400">{a.date}</p>
-            </div>
+              <p className="mt-6 text-label-caption text-neutral-400">{formatDotDate(a.createdAt)}</p>
+            </Link>
           ))}
         </div>
       </div>

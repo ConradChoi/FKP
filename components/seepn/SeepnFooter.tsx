@@ -10,6 +10,10 @@ export function SeepnFooter() {
       <div className="mx-auto max-w-6xl px-6 py-3 text-label-caption text-neutral-400">© 2026 SEEPN Inc. All rights reserved.</div>
       <div className="border-t border-neutral-100 py-6">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-6 text-label-caption text-neutral-500">
+          <Link href="/seepn/notices" className="hover:text-neutral-700 hover:underline">
+            공지사항
+          </Link>
+          <span aria-hidden="true">·</span>
           <Link href="/seepn/legal/terms" className="hover:text-neutral-700 hover:underline">
             이용약관
           </Link>
