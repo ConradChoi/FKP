@@ -7,7 +7,7 @@ import { HeaderAccount } from '@/components/seepn/HeaderAccount'
 export function SeepnMainHeader({ account, active }: { account?: React.ReactNode; active?: 'partners' | 'top100' | 'community' | 'insights' | 'faq' }) {
   return (
     <header className="sticky top-0 z-40 bg-[#0f1732]">
-      <div className="mx-auto flex h-[72px] max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 md:h-[72px]">
         <div className="flex items-center gap-8">
           <Link href="/seepn/home" className="text-body-lg font-semibold text-white">
             SEEPN
@@ -41,16 +41,32 @@ export function SeepnMainHeader({ account, active }: { account?: React.ReactNode
           </form>
           <Link
             href="/supplier/signup"
-            className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-label-caption text-white hover:bg-white/20"
+            className="hidden rounded-full border border-white/30 bg-white/10 px-4 py-2 text-label-caption text-white hover:bg-white/20 sm:inline-block"
           >
             공급사 등록
           </Link>
           {account ?? <HeaderAccount />}
-          <Link href="/seepn/my" className="rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20">
+          <Link href="/seepn/my" className="hidden rounded-full bg-white/10 px-4 py-2 text-label-caption text-[#99a6bf] hover:bg-white/20 sm:inline-block">
             마이페이지
           </Link>
         </div>
       </div>
+      {/* 모바일: 데스크톱 메뉴가 숨겨지므로 가로 스크롤 메뉴를 둔다(마이페이지도 여기서 접근). */}
+      <nav aria-label="주요 메뉴" className="flex gap-5 overflow-x-auto border-t border-white/10 px-4 py-2.5 text-body-sm text-[#b2bfd9] sm:px-6 md:hidden">
+        {[
+          ['/seepn/partners', '공급사 찾기'],
+          ['/seepn/top100', 'TOP100'],
+          ['/seepn/community', '커뮤니티'],
+          ['/seepn/insights', '인사이트'],
+          ['/seepn/faq', 'FAQ'],
+          ['/seepn/my', '마이페이지'],
+          ['/supplier/signup', '공급사 등록'],
+        ].map(([href, label]) => (
+          <Link key={href} href={href} className="shrink-0 hover:text-white">
+            {label}
+          </Link>
+        ))}
+      </nav>
     </header>
   )
 }

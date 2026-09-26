@@ -66,7 +66,7 @@ export default async function SeepnPartnerDetailPage({ params, searchParams }: {
   }
 
   // Reviews/ratings (2026-09-25): published reviews (masked reviewer), my own review, eligibility.
-  const [summaryMap, { data: reviewRows }, { data: myReviewRow }, deals] = await Promise.all([
+  const [summaryMap, { data: reviewRows }, { data: myReviewRow }, deals, { data: bookmarkSummary }] = await Promise.all([
     fetchRatingSummaries(session.supabase, [id]),
     session.supabase
       .from('partner_review_public')
@@ -80,7 +80,10 @@ export default async function SeepnPartnerDetailPage({ params, searchParams }: {
       .eq('partner_id', id)
       .maybeSingle<{ rating_quality: number; rating_price: number; rating_lead_time: number; rating_service: number; body: string | null; status: 'published' | 'hidden' }>(),
     fetchDealPartners(session.supabase),
+    // 추천 = 관심등록 총 건수(집계만, 누가 등록했는지는 노출하지 않음 — TOP100 좋아요와 같은 기준).
+    session.supabase.from('partner_bookmark_summary').select('bookmark_count').eq('partner_id', id).maybeSingle<{ bookmark_count: number }>(),
   ])
+  const recommendCount = bookmarkSummary?.bookmark_count ?? 0
   const summary = summaryMap.get(id) ?? null
   const index = trustIndex(summary)
   const eligible = deals.some((d) => d.partnerId === id)
@@ -314,7 +317,7 @@ export default async function SeepnPartnerDetailPage({ params, searchParams }: {
             <div className="flex items-center gap-3 text-body-sm text-neutral-400">
               <DetailBookmarkButton partnerId={id} initialBookmarked={Boolean(bookmarkRow)} />
               <span className="h-3 w-px bg-neutral-200" aria-hidden="true" />
-              <span title="준비 중">추천 -</span>
+              <span title="이 공급사를 관심등록한 회원 수">👍 추천 {recommendCount}</span>
               <span className="h-3 w-px bg-neutral-200" aria-hidden="true" />
               {summary ? (
                 <span className="font-medium text-accent-600">
